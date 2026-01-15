@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legacylens"
+version = "0.1.0"
+description = "Understand legacy code through AI + static analysis verification"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "LegacyLens Team"}
+]
+keywords = ["code-analysis", "ai", "legacy-code", "rag"]
+
+dependencies = [
+    # Parser
+    "tree-sitter>=0.21.0",
+    "tree-sitter-java>=0.21.0",
+    "tree-sitter-python>=0.21.0",
+    "radon>=6.0.0",
+    
+    # Embeddings & Vector DB
+    "transformers>=4.35.0",
+    "torch>=2.1.0",
+    "chromadb>=0.4.0",
+    
+    # LLM (local)
+    "ollama>=0.1.0",
+    
+    # Backend
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    
+    # Visualization
+    "networkx>=3.2.0",
+    "pyvis>=0.3.2",
+    
+    # UI
+    "streamlit>=1.28.0",
+    
+    # Utilities
+    "pydantic>=2.5.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+[project.scripts]
+legacylens = "legacylens.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

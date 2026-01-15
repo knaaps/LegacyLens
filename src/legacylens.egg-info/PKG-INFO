@@ -1,0 +1,118 @@
+Metadata-Version: 2.4
+Name: legacylens
+Version: 0.1.0
+Summary: Understand legacy code through AI + static analysis verification
+Author: LegacyLens Team
+License: MIT
+Keywords: code-analysis,ai,legacy-code,rag
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: tree-sitter>=0.21.0
+Requires-Dist: tree-sitter-java>=0.21.0
+Requires-Dist: tree-sitter-python>=0.21.0
+Requires-Dist: radon>=6.0.0
+Requires-Dist: transformers>=4.35.0
+Requires-Dist: torch>=2.1.0
+Requires-Dist: chromadb>=0.4.0
+Requires-Dist: ollama>=0.1.0
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn>=0.24.0
+Requires-Dist: networkx>=3.2.0
+Requires-Dist: pyvis>=0.3.2
+Requires-Dist: streamlit>=1.28.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.7.0; extra == "dev"
+
+# LegacyLens
+
+> Help developers understand legacy code through AI + static analysis verification
+
+## Quick Start
+
+### 1. System Requirements
+
+- **OS:** Debian 13+ / Ubuntu 22.04+
+- **Python:** 3.10+
+- **RAM:** 16GB recommended
+- **CPU:** Intel i5 or equivalent
+
+### 2. Setup Environment
+
+```bash
+cd /home/knaaps/Desktop/project/LegacyLens
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -e ".[dev]"
+```
+
+### 3. Install Ollama (Local LLM)
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Start Ollama service
+systemctl --user start ollama
+# Or run directly: ollama serve
+
+# Download the model (~4GB)
+ollama pull deepseek-coder:6.7b
+```
+
+### 4. Clone Test Repositories
+
+```bash
+# Easy mode - well-structured Spring Boot app
+git clone https://github.com/spring-projects/spring-petclinic.git data/spring-petclinic
+
+# Hard mode - complex legacy Java project
+git clone https://github.com/apache/ant.git data/apache-ant
+```
+
+### 5. Run Tests
+
+```bash
+pytest tests/ -v
+```
+
+### 6. Usage
+
+```bash
+# Index a repository
+legacylens index data/spring-petclinic
+
+# Query code
+legacylens query "What does the OwnerController do?"
+```
+
+## Project Structure
+
+```
+src/legacylens/
+├── parser/          # Code parsing (tree-sitter)
+├── embeddings/      # CodeBERT + ChromaDB
+├── retrieval/       # RAG pipeline
+├── agents/          # Writer-Critic verification (Phase 2)
+└── main.py          # CLI entry point
+```
+
+## Architecture
+
+```
+User Query → Parser → Embeddings → Retriever → Writer-Critic → Response
+                ↓           ↓
+           Static Facts  Vector DB
+```
+
+## License
+
+MIT
