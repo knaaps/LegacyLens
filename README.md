@@ -1,301 +1,218 @@
-<<<<<<< HEAD
-# LegacyLens
-=======
 # LegacyLens
 
-> **Understand legacy code through AI + static analysis verification**
+> **Intelligent Context Engineering for Legacy Code Comprehension**
 
-LegacyLens helps developers comprehend unfamiliar codebases by combining semantic code search with AI-powered explanations, grounded in provable static analysis facts.
+LegacyLens is a research-backed developer tool that helps you understand complex, undocumented legacy codebases. Unlike standard AI tools that rely on "vibes," LegacyLens uses a **Smart Hybrid Pipeline**—combining deterministic static analysis with a **Multi-Agent Verification Loop**—to produce accurate, structurally sound explanations.
 
 ---
 
-## Quick Start
+## 🚀 Key Innovations
 
-```bash
-# 1. Activate environment
-cd /home/knaaps/Desktop/project/LegacyLens
-source venv/bin/activate  # or: ./venv/bin/python ...
+| Feature | Description |
+| :--- | :--- |
+| **🧠 Smart Hybrid Context** | Prioritizes deterministic code slicing (call graphs, dependencies) and falls back to RAG (Semantic Search) only when necessary. |
+| **🕵️ Multi-Agent Verification** | Uses a **Writer-Critic-Finalizer** loop to verify factual accuracy, catching hallucinations before they reach you. |
+| **⚖️ 3D CodeBalance** | Scores code health on three axes: **Energy Efficiency**, **Technical Debt**, and **Safety Risk** (e.g., race conditions). |
+| **🔄 Regeneration Fidelity** | Validates explanations by attempting to regenerate the original code from the explanation (aiming for >70% structural match). |
 
-# 2. Index a repository
-legacylens index data/spring-petclinic
+---
 
-# 3. Search for code
-legacylens query "find owner by last name"
+## 🛠️ Architecture
 
-# 4. Get AI explanation (requires Ollama)
-legacylens explain "processFindForm"
+The pipeline moves beyond simple RAG by enforcing structural rigor:
+
+```ascii
+┌──────────────┐      ┌───────────────────────────┐      ┌────────────────────┐
+│  Legacy Code │ ──►  │ Phase 0: Repo Partitioning│ ──►  │ Phase 1: Indexing  │
+└──────────────┘      │ (Schuts-style modules)    │      │ (Tree-sitter + AST)│
+                      └───────────────────────────┘      └──────────┬─────────┘
+                                                                    │
+┌─────────────────────────────┐                                     ▼
+│ Phase 3: Multi-Agent Loop   │     ┌─────────────────────────────────────┐
+│ ┌────────┐    ┌────────┐    │     │ Phase 2: Smart Context Assembly     │
+│ │ Writer │◄──►│ Critic │    │◄─── │ • Primary: Deterministic Slicing    │
+│ └────────┘    └────────┘    │     │ • Fallback: Vector RAG (<20k tokens)│
+│      │ Passed?              │     └─────────────────────────────────────┘
+│      ▼                      │
+│ ┌───────────┐               │
+│ │ Finalizer │               │
+│ └─────┬─────┘               │
+└───────┼─────────────────────┘
+        │
+        ▼
+┌───────────────────┐      ┌───────────────────────┐
+│ Final Explanation │ ◄──  │ Phase 4: CodeBalance  │
+│ + Safety Score    │      │ (Energy/Debt/Safety)  │
+└───────────────────┘      └───────────────────────┘
+
 ```
 
 ---
 
-## Installation
+## ⚡ Quick Start
 
 ### Prerequisites
 
-- Python 3.10+
-- 16GB RAM recommended
-- Ollama (for AI explanations)
+* **Python 3.10+**
+* **16GB RAM** (Recommended)
+* **Ollama** (Required for the Agent Loop)
 
-### Step 1: Python Environment
+### 1. Installation
 
 ```bash
-cd /home/knaaps/Desktop/project/LegacyLens
+# Clone the repository
+git clone [https://github.com/yourusername/LegacyLens.git](https://github.com/yourusername/LegacyLens.git)
+cd LegacyLens
 
 # Create virtual environment
 python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# .\venv\Scripts\activate # Windows
 
-# Install LegacyLens
-./venv/bin/pip install -e .
+# Install LegacyLens in editable mode
+pip install -e .
+
 ```
 
-### Step 2: Install Ollama (for AI explanations)
+### 2. Setup AI Backend (Ollama)
+
+LegacyLens relies on local LLMs to ensure data privacy and zero cost.
 
 ```bash
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
+# Install Ollama (Linux/Mac)
+curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
 
-# Start Ollama (run in background)
+# Start the server
 ollama serve &
 
-# Download the code model (~4GB)
+# Pull the required models (Writer & Critic)
 ollama pull deepseek-coder:6.7b
+ollama pull qwen2.5-coder:7b
+
 ```
 
 ---
 
-## Commands
+## 💻 Usage Commands
 
 ### `legacylens index <path>`
 
-Parse and index a repository for searching.
+Parse and index a repository to build the Call Graph and Vector Store.
 
 ```bash
-# Index Java project
+# Index a Java project (uses tree-sitter-java)
 legacylens index data/spring-petclinic
 
-# Index Python project  
+# Index a Python project
 legacylens index my-python-project/
+
 ```
 
 **Output:**
+
 ```
 ┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
 ┃ Metric            ┃ Value ┃
 ┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
-│ Files Processed   │ 30    │
+│ Modules Detected  │ 5     │
 │ Functions Indexed │ 91    │
-│ Files Skipped     │ 17    │
-│ Errors            │ 0     │
+│ Graph Nodes       │ 450   │
 └───────────────────┴───────┘
+
 ```
 
 ### `legacylens query <text>`
 
-Search for code by natural language or code snippet.
+Search for code using natural language (RAG fallback).
 
 ```bash
-# Natural language query
-legacylens query "save owner to database" -k 3
+legacylens query "where is the user input validated?" -k 3
 
-# Filter by language
-legacylens query "validate" --language java
 ```
 
-**Options:**
-- `-k, --top-k`: Number of results (default: 5)
-- `-l, --language`: Filter by `java` or `python`
+### `legacylens explain <function_name>`
 
-### `legacylens explain <text>`
-
-Get an AI-powered explanation of code.
+**The Core Feature.** Triggers the Multi-Agent Verification Loop.
 
 ```bash
-legacylens explain "OwnerController"
+legacylens explain "processFindForm"
+
 ```
 
-**Output:**
-1. Shows the retrieved code with syntax highlighting
-2. Displays static analysis metadata (complexity, calls)
-3. Generates a natural language explanation using the AI model
+**What happens next:**
+
+1. **Context Assembly:** Fetches code + parent class + 1-hop callers.
+2. **Writer Agent:** Drafts an explanation.
+3. **Critic Agent:** Checks for hallucinations and missing safety flags (temp=0.0).
+4. **CodeBalance:** Calculates Energy, Debt, and Safety scores.
+
+**Sample Output:**
+
+> **Status:** Verified (Confidence: 85%)
+> **Safety Risk:** HIGH (Potential SQL Injection in Line 45)
+> **Explanation:** The `processFindForm` method handles GET requests... [Detailed description verified by agents]
 
 ### `legacylens stats`
 
-Show database statistics.
+View database statistics and CodeBalance aggregates.
 
 ```bash
 legacylens stats
+
 ```
 
 ---
 
-## How It Works
-
-```
-                    ┌─────────────┐
-                    │  Your Code  │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │   Parser    │  ← tree-sitter (Java/Python)
-                    │             │
-                    │ Extracts:   │
-                    │ • Functions │
-                    │ • Complexity│
-                    │ • Calls     │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  Embedder   │  ← CodeBERT (768-dim vectors)
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  ChromaDB   │  ← Vector storage
-                    └──────┬──────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         │                 │                 │
-    ┌────▼────┐      ┌─────▼─────┐     ┌─────▼─────┐
-    │  query  │      │  explain  │     │   stats   │
-    │         │      │           │     │           │
-    │ Semantic│      │ RAG +     │     │ DB info   │
-    │ search  │      │ Ollama    │     │           │
-    └─────────┘      └───────────┘     └───────────┘
-```
-
----
-
-## Supported Languages
-
-| Language | Parser | Complexity Metrics |
-|----------|--------|-------------------|
-| Java     | tree-sitter-java | McCabe (regex) |
-| Python   | tree-sitter-python | radon + McCabe |
-
----
-
-## Project Structure
+## 📂 Project Structure
 
 ```
 LegacyLens/
 ├── src/legacylens/
-│   ├── parser/           # Code parsing (tree-sitter)
-│   │   ├── base.py       # Abstract interface
-│   │   ├── java_parser.py
-│   │   └── python_parser.py
-│   ├── embeddings/       # CodeBERT + ChromaDB
-│   │   └── code_embedder.py
-│   ├── retrieval/        # Search pipeline
-│   │   └── retriever.py
-│   ├── generation/       # AI explanation
-│   │   └── generator.py
-│   └── main.py           # CLI entry point
-├── tests/                # Unit tests
-├── data/                 # Test repositories
-│   ├── spring-petclinic/ # Java sample
-│   └── apache-ant/       # Complex Java sample
-├── demo.py               # Interactive demo
-└── pyproject.toml        # Dependencies
+│   ├── analysis/             # Static Analysis & Slicing
+│   │   ├── complexity.py     # McCabe/Halstead metrics
+│   │   └── codebalance.py    # 3D Matrix (Energy, Debt, Safety)
+│   ├── agents/               # Multi-Agent Logic
+│   │   ├── writer.py         # Explainer (temp=0.3)
+│   │   ├── critic.py         # Verifier (temp=0.0)
+│   │   └── finalizer.py      # Polisher
+│   ├── retrieval/            # Hybrid Retrieval (Graph + Vector)
+│   └── main.py               # CLI Entry Point
+├── data/                     # Test Repositories
+└── pyproject.toml            # Dependencies
+
 ```
 
 ---
 
-## Testing
+## 🗺️ Roadmap & Status
 
-```bash
-# Run all tests
-./venv/bin/pytest tests/ -v
-
-# Run parser tests only
-./venv/bin/pytest tests/test_parser.py -v
-
-# Run with coverage
-./venv/bin/pytest tests/ --cov=legacylens
-```
+| Phase | Feature | Status |
+| --- | --- | --- |
+| **Phase 1** | Tree-sitter Parsing & Basic RAG | ✅ Complete |
+| **Phase 2** | Smart Context (Hybrid Pipeline) | 🚧 In Progress |
+| **Phase 2** | Multi-Agent Verification (Writer/Critic) | 🚧 In Progress |
+| **Phase 3** | 3D CodeBalance Matrix | ⏳ Planned (Feb) |
+| **Phase 4** | Regeneration Fidelity Check | ⏳ Planned (Feb) |
 
 ---
 
-## Demo
+## 🔧 Configuration
 
-Run the interactive demo to see all features:
-
-```bash
-python demo.py
-```
-
-This will:
-1. Create a Python sample project
-2. Index both Java and Python code
-3. Demonstrate semantic search
-4. Generate an AI explanation
-
----
-
-## Configuration
-
-### Database Location
-
-By default, the vector database is stored in `./legacylens_db`. Override with:
+By default, the database is stored in `./legacylens_db`.
+To change the model or database path, set environment variables:
 
 ```bash
-legacylens --db-path /custom/path index my-repo/
+export LEGACYLENS_DB="/path/to/db"
+export LEGACYLENS_MODEL="deepseek-coder:6.7b"
+
 ```
-
-### Model Selection
-
-The default model is `deepseek-coder:6.7b`. To use a different Ollama model, modify `src/legacylens/generation/generator.py`:
-
-```python
-def generate_explanation(..., model: str = "codellama:7b"):
-```
-
----
-
-## Troubleshooting
-
-### "No module named 'legacylens'"
-
-```bash
-./venv/bin/pip install -e .
-```
-
-### "Failed to connect to Ollama"
-
-```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/tags
-
-# Start Ollama if not running
-ollama serve
-```
-
-### Slow first query
-
-The first query downloads CodeBERT (~500MB). Subsequent queries are fast.
-
----
-
-## Roadmap
-
-### Phase 1 (Complete) ✅
-- [x] Java + Python parsing
-- [x] CodeBERT embeddings
-- [x] ChromaDB storage
-- [x] Semantic search
-- [x] AI explanation
-
-### Phase 2 (Next)
-- [ ] Writer-Critic verification loop
-- [ ] Confidence scoring
-- [ ] Retry with feedback
-
-### Phase 3 (Future)
-- [ ] Dependency graph visualization
-- [ ] Streamlit UI
-- [ ] CodeBalance matrix
 
 ---
 
 ## License
 
 MIT
->>>>>>> dfcc8b2 (interim production)
+
+```
+
+```
