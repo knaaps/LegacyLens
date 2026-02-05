@@ -8,12 +8,15 @@ LegacyLens is a research-backed developer tool that helps you understand complex
 
 ## 🚀 Key Innovations
 
-| Feature | Description |
-| :--- | :--- |
-| **🧠 Smart Hybrid Context** | Prioritizes deterministic code slicing (call graphs, dependencies) and falls back to RAG (Semantic Search) only when necessary. |
-| **🕵️ Multi-Agent Verification** | Uses a **Writer-Critic-Finalizer** loop to verify factual accuracy, catching hallucinations before they reach you. |
-| **⚖️ 3D CodeBalance** | Scores code health on three axes: **Energy Efficiency**, **Technical Debt**, and **Safety Risk** (e.g., race conditions). |
-| **🔄 Regeneration Fidelity** | Validates explanations by attempting to regenerate the original code from the explanation (aiming for >70% structural match). |
+| Feature                         | Description                            |
+| :---                            |                                   :--- |
+| **🧠 Smart Hybrid Context**     | Prioritizes deterministic code slicing (call graphs, dependencies) and falls back to RAG (Semantic Search) only when necessary. |
+
+| **🕵️ Multi-Agent Verification** | Uses a **Writer-Critic-Finalizer** loop to verify factual accuracy, catching hallucinations before they reach you.                   |
+
+| **⚖️ 3D CodeBalance**           | Scores code health on three axes: **Energy Efficiency**, **Technical Debt**, and **Safety Risk** (e.g., race conditions).           |
+
+| **🔄 Regeneration Fidelity**    | Validates explanations by attempting to regenerate the original code from the explanation (aiming for >70% structural match).              |
 
 ---
 
@@ -61,7 +64,7 @@ The pipeline moves beyond simple RAG by enforcing structural rigor:
 
 ```bash
 # Clone the repository
-git clone [https://github.com/yourusername/LegacyLens.git](https://github.com/yourusername/LegacyLens.git)
+git clone [https://github.com/knaaps/LegacyLens](https://github.com/knaaps/LegacyLens)
 cd LegacyLens
 
 # Create virtual environment
@@ -93,7 +96,7 @@ ollama pull qwen2.5-coder:7b
 
 ---
 
-## 💻 Usage Commands
+## Usage Commands
 
 ### `legacylens index <path>`
 
@@ -186,13 +189,13 @@ LegacyLens/
 
 ## 🗺️ Roadmap & Status
 
-| Phase | Feature | Status |
-| --- | --- | --- |
-| **Phase 1** | Tree-sitter Parsing & Basic RAG | ✅ Complete |
-| **Phase 2** | Smart Context (Hybrid Pipeline) | 🚧 In Progress |
-| **Phase 2** | Multi-Agent Verification (Writer/Critic) | 🚧 In Progress |
-| **Phase 3** | 3D CodeBalance Matrix | ⏳ Planned (Feb) |
-| **Phase 4** | Regeneration Fidelity Check | ⏳ Planned (Feb) |
+| Phase       | Feature                                  | Status            |
+| ---         | ---                                      | ---               |
+| **Phase 1** | Tree-sitter Parsing & Basic RAG          | ✅ Complete       |
+| **Phase 2** | Smart Context (Hybrid Pipeline)          | 🚧 In Progress    |
+| **Phase 2** | Multi-Agent Verification (Writer/Critic) | 🚧 In Progress    |
+| **Phase 3** | 3D CodeBalance Matrix                    | ⏳ Planned (Feb)  |
+| **Phase 4** | Regeneration Fidelity Check              | ⏳ Planned (Feb)  |
 
 ---
 
