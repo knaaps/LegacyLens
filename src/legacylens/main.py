@@ -1,4 +1,4 @@
-"""LegacyLens CLI - Index and query legacy code."""
+"""LegacyLens CLI - Index and query legacy code with multi-agent verification."""
 
 import argparse
 import sys
@@ -10,13 +10,19 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from legacylens.retrieval.retriever import CodeRetriever
-from legacylens.generation.generator import generate_explanation
+from legacylens.agents.orchestrator import generate_verified_explanation
+from legacylens.analysis.call_graph import CallGraph
+from legacylens.analysis.context_slicer import build_hybrid_context
 
 console = Console()
 
+# Global call graph (built during indexing, used during explain)
+_call_graph: CallGraph | None = None
+
 
 def cmd_index(args: argparse.Namespace) -> int:
-    """Index a repository."""
+    """Index a repository and build call graph."""
+    global _call_graph
     repo_path = Path(args.path).resolve()
     
     if not repo_path.exists():
@@ -30,6 +36,10 @@ def cmd_index(args: argparse.Namespace) -> int:
     with console.status("[bold green]Parsing and embedding code..."):
         stats = retriever.index_repository(repo_path)
     
+    # Build call graph from indexed functions
+    with console.status("[bold green]Building call graph..."):
+        _call_graph = _build_call_graph_from_db(retriever)
+    
     # Display results
     table = Table(title="Indexing Complete")
     table.add_column("Metric", style="cyan")
@@ -37,6 +47,7 @@ def cmd_index(args: argparse.Namespace) -> int:
     
     table.add_row("Files Processed", str(stats["files_processed"]))
     table.add_row("Functions Indexed", str(stats["functions_indexed"]))
+    table.add_row("Graph Nodes", str(len(_call_graph)) if _call_graph else "0")
     table.add_row("Files Skipped", str(stats["files_skipped"]))
     table.add_row("Errors", str(len(stats["errors"])))
     
@@ -48,6 +59,41 @@ def cmd_index(args: argparse.Namespace) -> int:
             console.print(f"  • {error}")
     
     return 0
+
+
+def _build_call_graph_from_db(retriever: CodeRetriever) -> CallGraph:
+    """Build call graph from all indexed functions."""
+    graph = CallGraph()
+    
+    # Get all functions from the embedder
+    embedder = retriever.embedder
+    embedder._ensure_db_connected()
+    
+    # Query all documents
+    results = embedder._collection.get(
+        include=["documents", "metadatas"],
+    )
+    
+    if not results["ids"]:
+        return graph
+    
+    for i, doc_id in enumerate(results["ids"]):
+        meta = results["metadatas"][i]
+        code = results["documents"][i]
+        
+        # Parse calls from metadata
+        calls_str = meta.get("calls", "")
+        calls = [c.strip() for c in calls_str.split(",") if c.strip()]
+        
+        graph.add_function(
+            name=meta.get("name", "unknown"),
+            qualified_name=meta.get("qualified_name", doc_id),
+            file_path=meta.get("file_path", ""),
+            code=code,
+            calls=calls,
+        )
+    
+    return graph
 
 
 def cmd_query(args: argparse.Namespace) -> int:
@@ -114,7 +160,8 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
-    """Explain code using AI."""
+    """Explain code using multi-agent verification."""
+    global _call_graph
     query = args.query
     
     console.print(f"\n[bold]Explaining:[/bold] {query}\n")
@@ -127,22 +174,31 @@ def cmd_explain(args: argparse.Namespace) -> int:
         console.print("[red]Error:[/red] No code indexed. Run 'legacylens index <path>' first.")
         return 1
     
-    # Retrieve relevant code
-    results = retriever.search(query, top_k=1)
+    # Build call graph if not available
+    if _call_graph is None or len(_call_graph) == 0:
+        with console.status("[bold green]Building call graph..."):
+            _call_graph = _build_call_graph_from_db(retriever)
     
-    if not results:
+    # Get RAG results for fallback
+    rag_results = retriever.search(query, top_k=3)
+    
+    if not rag_results:
         console.print("[yellow]No matching code found.[/yellow]")
         return 0
     
-    result = results[0]
-    meta = result["metadata"]
-    code = result["code"]
+    # Build hybrid context (deterministic first, RAG fallback)
+    context = build_hybrid_context(query, _call_graph, rag_results)
+    code = context.get("code", rag_results[0]["code"])
+    
+    # Get metadata for display
+    meta = rag_results[0]["metadata"]
     
     # Show the retrieved code
     console.print(Panel(
         f"[bold cyan]{meta['qualified_name']}[/bold cyan]\n"
-        f"File: {meta['file_path']}:{meta['start_line']}-{meta['end_line']}",
-        title="Retrieved Code",
+        f"File: {meta['file_path']}:{meta['start_line']}-{meta['end_line']}\n"
+        f"Context Source: {context.get('source', 'unknown')}",
+        title="Target Code",
     ))
     
     syntax = Syntax(
@@ -155,12 +211,46 @@ def cmd_explain(args: argparse.Namespace) -> int:
     console.print(syntax)
     console.print()
     
-    # Generate explanation
-    console.print("[bold green]Generating explanation...[/bold green]\n")
+    # Show related functions if deterministic context found
+    if context.get("callers"):
+        console.print("[dim]Related: Callers found in graph[/dim]")
+    if context.get("callees"):
+        console.print("[dim]Related: Callees found in graph[/dim]")
     
-    explanation = generate_explanation(code, query, meta)
+    # Generate verified explanation using Writer→Critic loop
+    console.print("\n[bold green]Running Writer→Critic verification loop...[/bold green]\n")
     
-    console.print(Panel(explanation, title="Explanation", border_style="green"))
+    result = generate_verified_explanation(
+        code=code,
+        context=context,
+        max_iterations=2,
+    )
+    
+    # Display verification status
+    if result.verified:
+        status_style = "green"
+        status_icon = "✓"
+    else:
+        status_style = "yellow"
+        status_icon = "⚠"
+    
+    console.print(Panel(
+        f"[bold {status_style}]{status_icon} {result.status_string}[/bold {status_style}]\n"
+        f"Iterations: {result.iterations}",
+        title="Verification Status",
+        border_style=status_style,
+    ))
+    
+    # Show issues if any
+    if result.critique and result.critique.issues:
+        console.print(f"[yellow]Issues:[/yellow] {', '.join(result.critique.issues)}")
+    
+    # Display the explanation
+    console.print(Panel(
+        result.explanation,
+        title="Explanation",
+        border_style="green" if result.verified else "yellow",
+    ))
     
     return 0
 
@@ -215,3 +305,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
