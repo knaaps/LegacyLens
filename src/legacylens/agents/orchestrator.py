@@ -1,10 +1,9 @@
 """Orchestrator - Runs the Writer→Critic verification loop.
 
-The orchestrator coordinates the multi-agent verification:
-1. Writer drafts an explanation
-2. Critic checks for hallucinations
-3. If failed, Writer revises with feedback
-4. Repeat until passed or max iterations
+Optimized for runtime:
+- Uses a single model for both Writer and Critic (no model switching)
+- Default 1 iteration (verify once), max 2 on retry
+- Short-circuits on writer errors
 """
 
 from dataclasses import dataclass
@@ -17,13 +16,13 @@ from legacylens.agents.critic import critique_explanation, CritiqueResult
 @dataclass
 class VerifiedExplanation:
     """Final output of the verification loop."""
-    
+
     explanation: str
     verified: bool
     confidence: int  # 0-100
     iterations: int
     critique: Optional[CritiqueResult] = None
-    
+
     @property
     def status_string(self) -> str:
         if self.verified:
@@ -36,55 +35,54 @@ def generate_verified_explanation(
     code: str,
     context: dict,
     max_iterations: int = 2,
-    writer_model: str = "deepseek-coder:6.7b",
-    critic_model: str = "qwen2.5-coder:7b",
+    model: str = "deepseek-coder:6.7b",
 ) -> VerifiedExplanation:
     """
     Run the Writer→Critic verification loop.
-    
+
+    Uses a SINGLE model for both agents to avoid the overhead of
+    loading/switching between two separate models.
+
     Args:
         code: Source code to explain
         context: Context dict (static_facts, callers, callees, etc.)
-        max_iterations: Maximum revision attempts
-        writer_model: Model for Writer agent
-        critic_model: Model for Critic agent
-        
+        max_iterations: Maximum revision attempts (default 2)
+        model: Single Ollama model used for both Writer and Critic
+
     Returns:
         VerifiedExplanation with final result and metadata
     """
     explanation = ""
     critique = None
-    iteration = 0
-    
-    # Add feedback from previous iteration to context
+
+    # Copy context so we can add revision feedback without mutating
     revision_context = context.copy()
-    
+
     for iteration in range(1, max_iterations + 1):
-        # Step 1: Writer generates/revises explanation
+        # Step 1: Writer generates/revises
         explanation = write_explanation(
             code=code,
             context=revision_context,
-            model=writer_model,
+            model=model,
         )
-        
-        # Check for writer errors
+
+        # Short-circuit on writer failure
         if explanation.startswith("[Writer Error:"):
             return VerifiedExplanation(
                 explanation=explanation,
                 verified=False,
                 confidence=0,
                 iterations=iteration,
-                critique=None,
             )
-        
-        # Step 2: Critic verifies
+
+        # Step 2: Critic verifies (same model, different temp)
         critique = critique_explanation(
             code=code,
             explanation=explanation,
-            model=critic_model,
+            model=model,
         )
-        
-        # If passed, we're done
+
+        # Pass → done
         if critique.passed:
             return VerifiedExplanation(
                 explanation=explanation,
@@ -93,19 +91,16 @@ def generate_verified_explanation(
                 iterations=iteration,
                 critique=critique,
             )
-        
-        # If failed, add feedback for next iteration
-        if critique.issues:
-            revision_context["revision_feedback"] = (
-                f"Previous explanation had issues: {', '.join(critique.issues)}. "
-                f"Suggestions: {critique.suggestions}"
-            )
-    
-    # Max iterations reached without passing
+
+        # Fail → feed issues back for next iteration
+        if critique.issues and iteration < max_iterations:
+            revision_context["revision_feedback"] = ", ".join(critique.issues)
+
+    # Max iterations exhausted
     return VerifiedExplanation(
         explanation=explanation,
         verified=False,
         confidence=critique.confidence if critique else 0,
-        iterations=iteration,
+        iterations=max_iterations,
         critique=critique,
     )
