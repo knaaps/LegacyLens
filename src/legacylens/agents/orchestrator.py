@@ -11,6 +11,7 @@ from typing import Optional
 
 from legacylens.agents.writer import write_explanation
 from legacylens.agents.critic import critique_explanation, CritiqueResult
+from legacylens.agents.finalizer import finalize_explanation
 
 
 @dataclass
@@ -21,14 +22,19 @@ class VerifiedExplanation:
     verified: bool
     confidence: int  # 0-100
     iterations: int
+    safety_risk: str = ""
     critique: Optional[CritiqueResult] = None
 
     @property
     def status_string(self) -> str:
+        base = f"Confidence: {self.confidence}%"
         if self.verified:
-            return f"✓ Verified (Confidence: {self.confidence}%)"
+            status = f"✓ Verified ({base})"
         else:
-            return f"⚠ Unverified (Confidence: {self.confidence}%)"
+            status = f"⚠ Unverified ({base})"
+        if self.safety_risk:
+            status += f" | Safety: {self.safety_risk}"
+        return status
 
 
 def generate_verified_explanation(
@@ -82,13 +88,21 @@ def generate_verified_explanation(
             model=model,
         )
 
-        # Pass → done
+        # Pass → finalize and return
         if critique.passed:
-            return VerifiedExplanation(
+            # Finalizer polishes the output (non-critical)
+            final_text = finalize_explanation(
                 explanation=explanation,
+                static_facts=context.get("static_facts", {}),
+                safety_risk=critique.safety_risk,
+                model=model,
+            )
+            return VerifiedExplanation(
+                explanation=final_text,
                 verified=True,
                 confidence=critique.confidence,
                 iterations=iteration,
+                safety_risk=critique.safety_risk,
                 critique=critique,
             )
 
@@ -96,11 +110,19 @@ def generate_verified_explanation(
         if critique.issues and iteration < max_iterations:
             revision_context["revision_feedback"] = ", ".join(critique.issues)
 
-    # Max iterations exhausted
-    return VerifiedExplanation(
+    # Max iterations exhausted — still finalize
+    safety = critique.safety_risk if critique else ""
+    final_text = finalize_explanation(
         explanation=explanation,
+        static_facts=context.get("static_facts", {}),
+        safety_risk=safety,
+        model=model,
+    )
+    return VerifiedExplanation(
+        explanation=final_text,
         verified=False,
         confidence=critique.confidence if critique else 0,
         iterations=max_iterations,
+        safety_risk=safety,
         critique=critique,
     )

@@ -1,10 +1,19 @@
-"""LegacyLens Analysis - Call graph and context slicing."""
+"""LegacyLens Analysis - Static analysis and context assembly."""
 
-from legacylens.analysis.call_graph import CallGraph
-from legacylens.analysis.context_slicer import slice_context, SlicedContext
+from legacylens.analysis.call_graph import CallGraph, FunctionNode
+from legacylens.analysis.context_slicer import (
+    SlicedContext,
+    slice_context,
+    build_hybrid_context,
+)
+from legacylens.analysis.complexity import calculate_mccabe_complexity, complexity_label
 
 __all__ = [
     "CallGraph",
-    "slice_context",
+    "FunctionNode",
     "SlicedContext",
+    "slice_context",
+    "build_hybrid_context",
+    "calculate_mccabe_complexity",
+    "complexity_label",
 ]

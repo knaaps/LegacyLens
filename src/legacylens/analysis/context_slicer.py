@@ -14,17 +14,18 @@ class SlicedContext:
     """
     Deterministically sliced context for a target function.
     
-    Contains the target code plus related functions (callers/callees).
+    Contains the target code plus related functions (callers/callees/siblings).
     """
     
     target: FunctionNode
     callers: list[FunctionNode] = field(default_factory=list)
     callees: list[FunctionNode] = field(default_factory=list)
+    siblings: list[FunctionNode] = field(default_factory=list)
     
     @property
     def has_context(self) -> bool:
         """True if we have any related functions."""
-        return bool(self.callers or self.callees)
+        return bool(self.callers or self.callees or self.siblings)
     
     def to_context_dict(self) -> dict:
         """
@@ -40,15 +41,16 @@ class SlicedContext:
                 "file_path": self.target.file_path,
                 "calls": self.target.calls,
             },
-            "callers": [c.code for c in self.callers[:2]],  # Limit to 2
-            "callees": [c.code for c in self.callees[:2]],  # Limit to 2
+            "callers": [c.code for c in self.callers[:2]],
+            "callees": [c.code for c in self.callees[:2]],
+            "parent_class": [s.qualified_name for s in self.siblings[:2]],
         }
     
     @property
     def total_lines(self) -> int:
         """Approximate total lines of context."""
         lines = self.target.code.count("\n") + 1
-        for node in self.callers + self.callees:
+        for node in self.callers + self.callees + self.siblings:
             lines += node.code.count("\n") + 1
         return lines
 
@@ -81,11 +83,45 @@ def slice_context(
     # Get 1-hop callees (functions that target calls)
     callees = graph.get_callee_nodes(target_name)[:max_callees]
     
+    # Get parent class siblings (methods in the same class)
+    siblings = _get_class_siblings(target, graph)
+    
     return SlicedContext(
         target=target,
         callers=callers,
         callees=callees,
+        siblings=siblings,
     )
+
+
+def _get_class_siblings(
+    target: FunctionNode,
+    graph: CallGraph,
+    max_siblings: int = 2,
+) -> list[FunctionNode]:
+    """
+    Find sibling methods from the same class.
+    
+    Uses qualified_name (e.g., 'OwnerController.processFind') to find
+    other methods of the same class.
+    """
+    qn = target.qualified_name
+    if "." not in qn:
+        return []
+    
+    class_prefix = qn.rsplit(".", 1)[0] + "."
+    siblings = []
+    
+    for node in graph._nodes.values():
+        if (
+            node.qualified_name.startswith(class_prefix)
+            and node.name != target.name
+        ):
+            siblings.append(node)
+            if len(siblings) >= max_siblings:
+                break
+    
+    return siblings
 
 
 def build_hybrid_context(

@@ -1,10 +1,11 @@
-"""Critic Agent - Verifies explanations for accuracy.
+"""Critic Agent - Verifies explanations for accuracy and safety.
 
 Uses temperature=0.0 and a compact structured prompt for fast verification.
+Checks for hallucinations AND safety risks (SQL injection, race conditions, etc.).
 """
 
 import ollama
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -15,10 +16,12 @@ class CritiqueResult:
     confidence: int  # 0-100
     issues: list[str]
     suggestions: str
+    safety_risk: str = ""  # Safety concern if any
 
     def __str__(self) -> str:
         status = "✓ PASSED" if self.passed else "✗ FAILED"
-        return f"{status} (Confidence: {self.confidence}%)"
+        safety = f" | Safety: {self.safety_risk}" if self.safety_risk else ""
+        return f"{status} (Confidence: {self.confidence}%){safety}"
 
 
 def critique_explanation(
@@ -30,8 +33,9 @@ def critique_explanation(
     Verify an explanation against the source code.
 
     Uses the SAME model as Writer to avoid a second model load.
+    Checks for both hallucinations and safety risks.
     """
-    prompt = f"""Verify if this explanation matches the code. Check for hallucinations.
+    prompt = f"""Verify if this explanation matches the code. Check for hallucinations and safety risks.
 
 CODE:
 {code}
@@ -42,6 +46,7 @@ EXPLANATION:
 Reply EXACTLY in this format (one line each):
 PASSED: yes or no
 CONFIDENCE: 0-100
+SAFETY: risk description (SQL injection, race condition, unvalidated input) or none
 ISSUES: list or none
 SUGGESTIONS: text or none needed"""
 
@@ -51,7 +56,7 @@ SUGGESTIONS: text or none needed"""
             prompt=prompt,
             options={
                 "temperature": 0.0,
-                "num_predict": 100,  # Structured output is short
+                "num_predict": 120,  # Slightly more for safety field
             },
         )
 
@@ -73,6 +78,7 @@ def _parse_critique_response(response: str) -> CritiqueResult:
     confidence = 50
     issues = []
     suggestions = ""
+    safety_risk = ""
 
     for line in lines:
         line = line.strip()
@@ -86,6 +92,10 @@ def _parse_critique_response(response: str) -> CritiqueResult:
                 confidence = max(0, min(100, confidence))
             except ValueError:
                 confidence = 50
+        elif upper.startswith("SAFETY:"):
+            safety_text = line.split(":", 1)[1].strip()
+            if safety_text.lower() != "none":
+                safety_risk = safety_text
         elif upper.startswith("ISSUES:"):
             issues_text = line.split(":", 1)[1].strip()
             if issues_text.lower() != "none":
@@ -100,4 +110,5 @@ def _parse_critique_response(response: str) -> CritiqueResult:
         confidence=confidence,
         issues=issues,
         suggestions=suggestions,
+        safety_risk=safety_risk,
     )

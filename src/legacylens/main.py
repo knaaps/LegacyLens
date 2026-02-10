@@ -1,6 +1,7 @@
 """LegacyLens CLI - Index and query legacy code with multi-agent verification."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -15,6 +16,9 @@ from legacylens.analysis.call_graph import CallGraph
 from legacylens.analysis.context_slicer import build_hybrid_context
 
 console = Console()
+
+# Read model from env var or use default
+LLM_MODEL = os.environ.get("LEGACYLENS_MODEL", "deepseek-coder:6.7b")
 
 # Global call graph (built during indexing, used during explain)
 _call_graph: CallGraph | None = None
@@ -40,11 +44,19 @@ def cmd_index(args: argparse.Namespace) -> int:
     with console.status("[bold green]Building call graph..."):
         _call_graph = _build_call_graph_from_db(retriever)
     
+    # Count modules (unique parent directories)
+    modules = set()
+    if _call_graph:
+        for node in _call_graph._nodes.values():
+            if node.file_path:
+                modules.add(str(Path(node.file_path).parent))
+    
     # Display results
     table = Table(title="Indexing Complete")
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="green")
     
+    table.add_row("Modules Detected", str(len(modules)))
     table.add_row("Files Processed", str(stats["files_processed"]))
     table.add_row("Functions Indexed", str(stats["functions_indexed"]))
     table.add_row("Graph Nodes", str(len(_call_graph)) if _call_graph else "0")
@@ -223,6 +235,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
     result = generate_verified_explanation(
         code=code,
         context=context,
+        model=LLM_MODEL,
     )
     
     # Display verification status
@@ -239,6 +252,10 @@ def cmd_explain(args: argparse.Namespace) -> int:
         title="Verification Status",
         border_style=status_style,
     ))
+    
+    # Show safety risk if flagged
+    if result.safety_risk:
+        console.print(f"[red bold]Safety Risk:[/red bold] {result.safety_risk}")
     
     # Show issues if any
     if result.critique and result.critique.issues:

@@ -88,9 +88,8 @@ curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
 # Start the server
 ollama serve &
 
-# Pull the required models (Writer & Critic)
+# Pull the model (used for both Writer & Critic agents)
 ollama pull deepseek-coder:6.7b
-ollama pull qwen2.5-coder:7b
 
 ```
 
@@ -172,12 +171,15 @@ legacylens stats
 LegacyLens/
 ├── src/legacylens/
 │   ├── analysis/             # Static Analysis & Slicing
+│   │   ├── call_graph.py     # In-memory call graph
+│   │   ├── context_slicer.py # Deterministic context assembly
 │   │   ├── complexity.py     # McCabe/Halstead metrics
 │   │   └── codebalance.py    # 3D Matrix (Energy, Debt, Safety)
 │   ├── agents/               # Multi-Agent Logic
 │   │   ├── writer.py         # Explainer (temp=0.3)
 │   │   ├── critic.py         # Verifier (temp=0.0)
-│   │   └── finalizer.py      # Polisher
+│   │   ├── finalizer.py      # Polisher
+│   │   └── orchestrator.py   # Writer→Critic→Finalizer loop
 │   ├── retrieval/            # Hybrid Retrieval (Graph + Vector)
 │   └── main.py               # CLI Entry Point
 ├── data/                     # Test Repositories
