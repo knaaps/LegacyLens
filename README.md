@@ -11,28 +11,28 @@
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
-### 🧠 Smart Hybrid Context
+###  Smart Hybrid Context
 LegacyLens prioritizes structural understanding over simple text matching:
 1.  **Deterministic Slicing:** Retrieves the exact code, its direct callers, and callees using an in-memory call graph.
 2.  **RAG Fallback:** Seamlessly blends in semantic search results from **ChromaDB** only when deterministic context is insufficient.
 
-### 🕵️ Multi-Agent Verification
-Stop trusting generated text blindly. LegacyLens orchestrates a **Writer-Critic Loop**:
+###  Multi-Agent Verification
+LegacyLens orchestrates a **Writer-Critic Loop**:
 -   **Writer Agent:** Drafts a fluent, human-readable explanation.
 -   **Critic Agent:** Rigorously verifies the draft against source code, flagging hallucinations and missing safety warnings.
 -   **Orchestrator:** Manages the feedback loop until the explanation passes verification thresholds.
 
-### ⚖️ 3D CodeBalance Score
-Assessing code health isn't one-dimensional. LegacyLens scores every function on three critical axes (0-10 scale):
--   **⚡ Energy:** Computational cost (loops, recursion, complexity).
--   **🔧 Debt:** Maintainability burden (nesting depth, parameter count, length).
--   **🛡️ Safety:** Security risks (SQL injection patterns, unsafe shell usage, swallowed exceptions).
+###  3D CodeBalance Score
+Assessing code health scores of every function on three critical axes (0-10 scale):
+-   ** Energy:** Computational cost (loops, recursion, complexity).
+-   ** Debt:** Maintainability burden (nesting depth, parameter count, length).
+-   ** Safety:** Security risks (SQL injection patterns, unsafe shell usage, swallowed exceptions).
 
 ---
 
-## 🛠️ Architecture
+##  Architecture
 
 The pipeline moves beyond simple RAG by enforcing structural rigor and multi-stage verification:
 
@@ -106,7 +106,7 @@ ollama pull qwen2.5-coder:7b     # Optimized for instruction following
 
 ---
 
-## 📖 Usage
+##  Usage
 
 ### 1. Index a Repository
 Build the static analysis graph and vector store.
@@ -131,14 +131,14 @@ legacylens explain "processFindForm"
 ```
 
 **Sample Output:**
-> ✅ **Verified** (Confidence: 85%)
+>  **Verified** (Confidence: 85%)
 >
 > **Explanation:** The `processFindForm` method handles GET requests... [Detailed description]
 >
 > **CodeBalance:**
-> - ⚡ Energy: [1/10] (Efficient)
-> - 🔧 Debt: [4/10] (Moderate nesting)
-> - 🛡️ Safety: [8/10] (Risk: Unvalidated input)
+> -  Energy: [1/10] (Efficient)
+> -  Debt: [4/10] (Moderate nesting)
+> -  Safety: [8/10] (Risk: Unvalidated input)
 
 ### 4. View Stats
 Check codebase size and database status.
@@ -148,7 +148,7 @@ legacylens stats
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 - `src/legacylens/agents/`: Multi-agent orchestration (Writer, Critic, Finalizer).
 - `src/legacylens/analysis/`: Static analysis logic (Call Graph, CodeBalance, Complexity).
@@ -158,7 +158,7 @@ legacylens stats
 
 ---
 
-## 🔬 Research Goals
+##  Research Goals
 
 LegacyLens aims to solve key challenges in automated code comprehension:
 1.  **Hallucination Reduction:** By feeding the LLM verifiable facts derived from static analysis (ASTs).
