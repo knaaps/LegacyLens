@@ -2,52 +2,63 @@
 
 > **Intelligent Context Engineering for Legacy Code Comprehension**
 
-LegacyLens is a research-backed developer tool that helps you understand complex, undocumented legacy codebases. Unlike standard AI tools that rely on "vibes," LegacyLens uses a **Smart Hybrid Pipeline**—combining deterministic static analysis with a **Multi-Agent Verification Loop**—to produce accurate, structurally sound explanations.
+![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Status](https://img.shields.io/badge/status-research_preview-orange.svg)
+
+**LegacyLens** is a research-backed developer tool designed to demystify complex, undocumented legacy codebases. Unlike standard AI coding assistants that rely on potential "hallucinations" or purely semantic retrieval, LegacyLens employs a **Smart Hybrid Pipeline**—combining deterministic static analysis (Call Graphs, ASTs) with a **Multi-Agent Verification Loop**—to produce accurate, structurally sound explanations.
 
 ---
 
-## 🚀 Key Innovations
+## 🚀 Key Features
 
-| Feature                         | Description                            |
-| :---                            |                                   :--- |
-| **🧠 Smart Hybrid Context**     | Prioritizes deterministic code slicing (call graphs, dependencies) and falls back to RAG (Semantic Search) only when necessary. |
+### 🧠 Smart Hybrid Context
+LegacyLens prioritizes structural understanding over simple text matching:
+1.  **Deterministic Slicing:** Retrieves the exact code, its direct callers, and callees using an in-memory call graph.
+2.  **RAG Fallback:** Seamlessly blends in semantic search results from **ChromaDB** only when deterministic context is insufficient.
 
-| **🕵️ Multi-Agent Verification** | Uses a **Writer-Critic-Finalizer** loop to verify factual accuracy, catching hallucinations before they reach you.                   |
+### 🕵️ Multi-Agent Verification
+Stop trusting generated text blindly. LegacyLens orchestrates a **Writer-Critic Loop**:
+-   **Writer Agent:** Drafts a fluent, human-readable explanation.
+-   **Critic Agent:** Rigorously verifies the draft against source code, flagging hallucinations and missing safety warnings.
+-   **Orchestrator:** Manages the feedback loop until the explanation passes verification thresholds.
 
-| **⚖️ 3D CodeBalance**           | Scores code health on three axes: **Energy Efficiency**, **Technical Debt**, and **Safety Risk** (e.g., race conditions).           |
-
-| **🔄 Regeneration Fidelity**    | Validates explanations by attempting to regenerate the original code from the explanation (aiming for >70% structural match).              |
+### ⚖️ 3D CodeBalance Score
+Assessing code health isn't one-dimensional. LegacyLens scores every function on three critical axes (0-10 scale):
+-   **⚡ Energy:** Computational cost (loops, recursion, complexity).
+-   **🔧 Debt:** Maintainability burden (nesting depth, parameter count, length).
+-   **🛡️ Safety:** Security risks (SQL injection patterns, unsafe shell usage, swallowed exceptions).
 
 ---
 
 ## 🛠️ Architecture
 
-The pipeline moves beyond simple RAG by enforcing structural rigor:
+The pipeline moves beyond simple RAG by enforcing structural rigor and multi-stage verification:
 
 ```ascii
 ┌──────────────┐      ┌───────────────────────────┐      ┌────────────────────┐
-│  Legacy Code │ ──►  │ Phase 0: Repo Partitioning│ ──►  │ Phase 1: Indexing  │
-└──────────────┘      │ (Schuts-style modules)    │      │ (Tree-sitter + AST)│
-                      └───────────────────────────┘      └──────────┬─────────┘
+│  Legacy Code │ ──►  │ Phase 1: In-Memory Index  │ ──►  │ Phase 1: Embeddings│
+│              │      │ (Call Graph + AST)        │      │ (CodeBERT + Chroma)│
+└──────────────┘      └───────────────────────────┘      └──────────┬─────────┘
                                                                     │
 ┌─────────────────────────────┐                                     ▼
 │ Phase 3: Multi-Agent Loop   │     ┌─────────────────────────────────────┐
 │ ┌────────┐    ┌────────┐    │     │ Phase 2: Smart Context Assembly     │
-│ │ Writer │◄──►│ Critic │    │◄─── │ • Primary: Deterministic Slicing    │
-│ └────────┘    └────────┘    │     │ • Fallback: Vector RAG (<20k tokens)│
+│ │ Writer │◄──►│ Critic │    │◄─── │ • Primary: Deterministic Call Graph │
+│ └────────┘    └────────┘    │     │ • Backup: Vector RAG                │
 │      │ Passed?              │     └─────────────────────────────────────┘
 │      ▼                      │
 │ ┌───────────┐               │
-│ │ Finalizer │               │
+│ │ Result    │               │
 │ └─────┬─────┘               │
 └───────┼─────────────────────┘
         │
         ▼
 ┌───────────────────┐      ┌───────────────────────┐
-│ Final Explanation │ ◄──  │ Phase 4: CodeBalance  │
-│ + Safety Score    │      │ (Energy/Debt/Safety)  │
+│ Verified Output   │ ◄──  │ Phase 4: CodeBalance  │
+│                   │      │ (3D Health Metrics)   │
 └───────────────────┘      └───────────────────────┘
-
 ```
 
 ---
@@ -55,167 +66,110 @@ The pipeline moves beyond simple RAG by enforcing structural rigor:
 ## ⚡ Quick Start
 
 ### Prerequisites
+*   **Python 3.10+**
+*   **Ollama** (Required for local LLM inference)
 
-* **Python 3.10+**
-* **16GB RAM** (Recommended)
-* **Ollama** (Required for the Agent Loop)
+### Installation
 
-### 1. Installation
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/knaaps/LegacyLens
+    cd LegacyLens
+    ```
 
-```bash
-# Clone the repository
-git clone [https://github.com/knaaps/LegacyLens](https://github.com/knaaps/LegacyLens)
-cd LegacyLens
+2.  **Create a virtual environment:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate  # Linux/Mac
+    # .\venv\Scripts\activate # Windows
+    ```
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# .\venv\Scripts\activate # Windows
+3.  **Install in editable mode:**
+    ```bash
+    pip install -e .
+    ```
 
-# Install LegacyLens in editable mode
-pip install -e .
-
-```
-
-### 2. Setup AI Backend (Ollama)
-
-LegacyLens relies on local LLMs to ensure data privacy and zero cost.
+### Setup AI Backend
+LegacyLens runs **100% locally** using Ollama to ensure data privacy and zero cost.
 
 ```bash
 # Install Ollama (Linux/Mac)
-curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+curl -fsSL https://ollama.com/install.sh | sh
 
 # Start the server
 ollama serve &
 
-# Pull the required models (Writer & Critic)
-ollama pull deepseek-coder:6.7b
-ollama pull qwen2.5-coder:7b
-
+# Pull required models
+ollama pull deepseek-coder:6.7b  # Optimized for reasoning/coding
+ollama pull qwen2.5-coder:7b     # Optimized for instruction following
 ```
 
 ---
 
-## Usage Commands
+## 📖 Usage
 
-### `legacylens index <path>`
-
-Parse and index a repository to build the Call Graph and Vector Store.
-
+### 1. Index a Repository
+Build the static analysis graph and vector store.
 ```bash
-# Index a Java project (uses tree-sitter-java)
+# Index a Java project
 legacylens index data/spring-petclinic
 
 # Index a Python project
-legacylens index my-python-project/
-
+legacylens index my-python-proj/
 ```
 
-**Output:**
-
-```
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
-┃ Metric            ┃ Value ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
-│ Modules Detected  │ 5     │
-│ Functions Indexed │ 91    │
-│ Graph Nodes       │ 450   │
-└───────────────────┴───────┘
-
-```
-
-### `legacylens query <text>`
-
-Search for code using natural language (RAG fallback).
-
+### 2. Query the Codebase (RAG)
+Find code using natural language.
 ```bash
-legacylens query "where is the user input validated?" -k 3
-
+legacylens query "where is user input validated?"
 ```
 
-### `legacylens explain <function_name>`
-
-**The Core Feature.** Triggers the Multi-Agent Verification Loop.
-
+### 3. Explain & Verify (Core Feature)
+Trigger the Multi-Agent loop to explain a specific function.
 ```bash
 legacylens explain "processFindForm"
-
 ```
 
-**What happens next:**
-
-1. **Context Assembly:** Fetches code + parent class + 1-hop callers.
-2. **Writer Agent:** Drafts an explanation.
-3. **Critic Agent:** Checks for hallucinations and missing safety flags (temp=0.0).
-4. **CodeBalance:** Calculates Energy, Debt, and Safety scores.
-
 **Sample Output:**
+> ✅ **Verified** (Confidence: 85%)
+>
+> **Explanation:** The `processFindForm` method handles GET requests... [Detailed description]
+>
+> **CodeBalance:**
+> - ⚡ Energy: [1/10] (Efficient)
+> - 🔧 Debt: [4/10] (Moderate nesting)
+> - 🛡️ Safety: [8/10] (Risk: Unvalidated input)
 
-> **Status:** Verified (Confidence: 85%)
-> **Safety Risk:** HIGH (Potential SQL Injection in Line 45)
-> **Explanation:** The `processFindForm` method handles GET requests... [Detailed description verified by agents]
-
-### `legacylens stats`
-
-View database statistics and CodeBalance aggregates.
-
+### 4. View Stats
+Check codebase size and database status.
 ```bash
 legacylens stats
-
 ```
 
 ---
 
 ## 📂 Project Structure
 
-```
-LegacyLens/
-├── src/legacylens/
-│   ├── analysis/             # Static Analysis & Slicing
-│   │   ├── complexity.py     # McCabe/Halstead metrics
-│   │   └── codebalance.py    # 3D Matrix (Energy, Debt, Safety)
-│   ├── agents/               # Multi-Agent Logic
-│   │   ├── writer.py         # Explainer (temp=0.3)
-│   │   ├── critic.py         # Verifier (temp=0.0)
-│   │   └── finalizer.py      # Polisher
-│   ├── retrieval/            # Hybrid Retrieval (Graph + Vector)
-│   └── main.py               # CLI Entry Point
-├── data/                     # Test Repositories
-└── pyproject.toml            # Dependencies
-
-```
+- `src/legacylens/agents/`: Multi-agent orchestration (Writer, Critic, Finalizer).
+- `src/legacylens/analysis/`: Static analysis logic (Call Graph, CodeBalance, Complexity).
+- `src/legacylens/embeddings/`: CodeBERT vector integration.
+- `src/legacylens/parser/`: Tree-sitter parsers for Java and Python.
+- `src/legacylens/retrieval/`: Hybrid retrieval engine.
 
 ---
 
-## 🗺️ Roadmap & Status
+## 🔬 Research Goals
 
-| Phase       | Feature                                  | Status            |
-| ---         | ---                                      | ---               |
-| **Phase 1** | Tree-sitter Parsing & Basic RAG          | ✅ Complete       |
-| **Phase 2** | Smart Context (Hybrid Pipeline)          | 🚧 In Progress    |
-| **Phase 2** | Multi-Agent Verification (Writer/Critic) | 🚧 In Progress    |
-| **Phase 3** | 3D CodeBalance Matrix                    | ⏳ Planned (Feb)  |
-| **Phase 4** | Regeneration Fidelity Check              | ⏳ Planned (Feb)  |
+LegacyLens aims to solve key challenges in automated code comprehension:
+1.  **Hallucination Reduction:** By feeding the LLM verifiable facts derived from static analysis (ASTs).
+2.  **Context Precision:** Avoiding "context window overflow" by intelligently slicing only relevant code.
+3.  **Sustainability:** Encouraging energy-efficient and maintainable code through the 3D CodeBalance metric.
 
----
-
-## 🔧 Configuration
-
-By default, the database is stored in `./legacylens_db`.
-To change the model or database path, set environment variables:
-
-```bash
-export LEGACYLENS_DB="/path/to/db"
-export LEGACYLENS_MODEL="deepseek-coder:6.7b"
-
-```
+For detailed research plans and architecture blueprints, see [blueprint.md](blueprint.md).
+For project progress and timelines, see [Tracking.md](Tracking.md).
 
 ---
 
 ## License
 
-MIT
-
-```
-
-```
+MIT License. See [LICENSE](LICENSE) for details.

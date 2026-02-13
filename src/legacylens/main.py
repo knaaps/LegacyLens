@@ -13,6 +13,7 @@ from legacylens.retrieval.retriever import CodeRetriever
 from legacylens.agents.orchestrator import generate_verified_explanation
 from legacylens.analysis.call_graph import CallGraph
 from legacylens.analysis.context_slicer import build_hybrid_context
+from legacylens.analysis.codebalance import score_code
 
 console = Console()
 
@@ -251,6 +252,48 @@ def cmd_explain(args: argparse.Namespace) -> int:
         title="Explanation",
         border_style="green" if result.verified else "yellow",
     ))
+    
+    # --- Phase 3: CodeBalance ---
+    console.print("\n[bold]CodeBalance Health Check:[/bold]\n")
+    
+    # Get function name from metadata for recursion detection
+    func_name = meta.get("name", "")
+    balance = score_code(code, function_name=func_name)
+    
+    # Color-code each score (0-3 green, 4-6 yellow, 7-10 red)
+    def _color(score: int) -> str:
+        if score <= 3:
+            return f"[green]{score}/10[/green]"
+        elif score <= 6:
+            return f"[yellow]{score}/10[/yellow]"
+        else:
+            return f"[red]{score}/10[/red]"
+    
+    # Grade color
+    grade_colors = {"A": "green", "B": "green", "C": "yellow", "D": "red", "F": "red"}
+    grade_color = grade_colors.get(balance.grade, "white")
+    
+    # Build score table
+    score_table = Table(title=f"Grade: [{grade_color}]{balance.grade}[/{grade_color}]")
+    score_table.add_column("Axis", style="cyan")
+    score_table.add_column("Score", justify="center")
+    score_table.add_column("Details", style="dim")
+    
+    # Energy row
+    energy_detail = ", ".join(balance.details.get("energy", {}).values()) or "No concerns"
+    score_table.add_row("⚡ Energy", _color(balance.energy), energy_detail)
+    
+    # Debt row
+    debt_detail = ", ".join(balance.details.get("debt", {}).values()) or "Clean code"
+    score_table.add_row("🔧 Debt", _color(balance.debt), debt_detail)
+    
+    # Safety row
+    safety_details = balance.details.get("safety", {})
+    safety_issues = safety_details.get("issues", [])
+    safety_detail = ", ".join(safety_issues) if safety_issues else "No risks detected"
+    score_table.add_row("🛡️ Safety", _color(balance.safety), safety_detail)
+    
+    console.print(score_table)
     
     return 0
 
