@@ -1,13 +1,14 @@
-"""Orchestrator - Runs the Writer→Critic verification loop.
+"""Orchestrator — Runs the Writer→Critic verification loop.
 
 The orchestrator coordinates the multi-agent verification:
 1. Writer drafts an explanation
 2. Critic checks for hallucinations
 3. If failed, Writer revises with feedback
 4. Repeat until passed or max iterations
+5. (Optional) Validate via code regeneration
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from legacylens.agents.writer import write_explanation
@@ -23,13 +24,16 @@ class VerifiedExplanation:
     confidence: int  # 0-100
     iterations: int
     critique: Optional[CritiqueResult] = None
+    fidelity_score: Optional[float] = None  # 0.0-1.0, from regeneration validation
+    fidelity_details: str = ""
 
     @property
     def status_string(self) -> str:
-        if self.verified:
-            return f"✓ Verified (Confidence: {self.confidence}%)"
-        else:
-            return f"⚠ Unverified (Confidence: {self.confidence}%)"
+        status = "✓ Verified" if self.verified else "⚠ Unverified"
+        parts = [f"{status} (Confidence: {self.confidence}%)"]
+        if self.fidelity_score is not None:
+            parts.append(f"Fidelity: {self.fidelity_score:.0%}")
+        return " | ".join(parts)
 
 
 def generate_verified_explanation(
@@ -38,9 +42,11 @@ def generate_verified_explanation(
     max_iterations: int = 2,
     writer_model: str = "deepseek-coder:6.7b",
     critic_model: str = "qwen2.5-coder:7b",
+    run_regeneration: bool = True,
+    language: str = "java",
 ) -> VerifiedExplanation:
     """
-    Run the Writer→Critic verification loop.
+    Run the Writer→Critic verification loop, with optional regeneration check.
 
     Args:
         code: Source code to explain
@@ -48,6 +54,8 @@ def generate_verified_explanation(
         max_iterations: Maximum revision attempts
         writer_model: Model for Writer agent
         critic_model: Model for Critic agent
+        run_regeneration: If True, validate explanation via code regeneration
+        language: Source code language ("java" or "python")
 
     Returns:
         VerifiedExplanation with final result and metadata
@@ -83,15 +91,9 @@ def generate_verified_explanation(
             model=critic_model,
         )
 
-        # If passed, we're done
+        # If passed, we're done with the critic loop
         if critique.passed:
-            return VerifiedExplanation(
-                explanation=explanation,
-                verified=True,
-                confidence=critique.confidence,
-                iterations=iteration,
-                critique=critique,
-            )
+            break
 
         # If failed, add feedback for next iteration
         if critique.issues:
@@ -100,11 +102,33 @@ def generate_verified_explanation(
                 f"Suggestions: {critique.suggestions}"
             )
 
-    # Max iterations reached without passing
+    # --- Optional: Regeneration validation ---
+    fidelity_score = None
+    fidelity_details = ""
+
+    if run_regeneration and explanation and not explanation.startswith("[Writer Error:"):
+        try:
+            from legacylens.analysis.regeneration_validator import validate_regeneration
+
+            regen_result = validate_regeneration(
+                original_code=code,
+                explanation=explanation,
+                language=language,
+                model=writer_model,
+            )
+            fidelity_score = regen_result["fidelity"]
+            fidelity_details = regen_result["details"]
+        except Exception as e:
+            fidelity_details = f"Regeneration error: {e}"
+
+    is_verified = critique.passed if critique else False
+
     return VerifiedExplanation(
         explanation=explanation,
-        verified=False,
+        verified=is_verified,
         confidence=critique.confidence if critique else 0,
         iterations=iteration,
         critique=critique,
+        fidelity_score=fidelity_score,
+        fidelity_details=fidelity_details,
     )

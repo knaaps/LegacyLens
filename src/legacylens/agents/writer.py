@@ -1,10 +1,10 @@
-"""Writer Agent - Generates explanation drafts.
+"""Writer Agent — Generates explanation drafts.
 
 The Writer uses a higher temperature (0.3) to produce fluent,
 readable explanations while still staying grounded in the code.
 """
 
-import ollama
+from legacylens.agents.provider import llm_generate
 
 
 def write_explanation(
@@ -18,10 +18,10 @@ def write_explanation(
     Args:
         code: The source code to explain
         context: Dict containing static_facts, similar_code, etc.
-        model: Ollama model to use
+        model: Model name (auto-mapped for Groq if LLM_PROVIDER=groq)
 
     Returns:
-        Explanation text (may contain inaccuracies - needs verification)
+        Explanation text (may contain inaccuracies — needs verification)
     """
     # Build grounding facts from context
     facts = []
@@ -70,11 +70,6 @@ INSTRUCTIONS:
 EXPLANATION:"""
 
     try:
-        response = ollama.generate(
-            model=model,
-            prompt=prompt,
-            options={"temperature": 0.3},
-        )
-        return response["response"].strip()
+        return llm_generate(prompt=prompt, model=model, temperature=0.3)
     except Exception as e:
         return f"[Writer Error: {e}]"
