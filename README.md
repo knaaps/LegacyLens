@@ -19,16 +19,19 @@ LegacyLens prioritizes structural understanding over simple text matching:
 2.  **RAG Fallback:** Seamlessly blends in semantic search results from **ChromaDB** only when deterministic context is insufficient.
 
 ###  Multi-Agent Verification
-LegacyLens orchestrates a **Writer-Critic Loop**:
--   **Writer Agent:** Drafts a fluent, human-readable explanation.
--   **Critic Agent:** Rigorously verifies the draft against source code, flagging hallucinations and missing safety warnings.
--   **Orchestrator:** Manages the feedback loop until the explanation passes verification thresholds.
+LegacyLens orchestrates a **Writer-Critic Loop** with **Compositional Verification**:
+-   **Writer Agent:** Drafts a fluent, human-readable explanation using **Hybrid LLMs** (Groq cloud or local Ollama).
+-   **Compositional Critic:** Rigorously verifies the draft using a 3-layer audit:
+    1.  **Factual:** Cross-references names against the AST to catch hallucinations.
+    2.  **Completeness:** Ensures coverage of params, returns, and side effects.
+    3.  **Risk:** Flags unmentioned safety issues (e.g., SQL injection).
+-   **Regeneration Validator:** Proves understanding by reconstructing the code from the explanation (AST fidelity check).
 
 ###  3D CodeBalance Score
 Assessing code health scores of every function on three critical axes (0-10 scale):
--   ** Energy:** Computational cost (loops, recursion, complexity).
--   ** Debt:** Maintainability burden (nesting depth, parameter count, length).
--   ** Safety:** Security risks (SQL injection patterns, unsafe shell usage, swallowed exceptions).
+-   **Energy:** Computational cost (loops, recursion, complexity).
+-   **Debt:** Maintainability burden (nesting depth, parameter count, length).
+-   **Safety:** Security risks (SQL injection patterns, unsafe shell usage, swallowed exceptions).
 
 ---
 
@@ -50,7 +53,7 @@ The pipeline moves beyond simple RAG by enforcing structural rigor and multi-sta
 │      │ Passed?              │     └─────────────────────────────────────┘
 │      ▼                      │
 │ ┌───────────┐               │
-│ │ Result    │               │
+│ │ Regen Val.│ (AST Check)   │
 │ └─────┬─────┘               │
 └───────┼─────────────────────┘
         │
@@ -67,7 +70,7 @@ The pipeline moves beyond simple RAG by enforcing structural rigor and multi-sta
 
 ### Prerequisites
 *   **Python 3.10+**
-*   **Ollama** (Required for local LLM inference)
+*   **Ollama** (for local privacy) OR **Groq API Key** (for speed)
 
 ### Installation
 
@@ -90,19 +93,21 @@ The pipeline moves beyond simple RAG by enforcing structural rigor and multi-sta
     ```
 
 ### Setup AI Backend
-LegacyLens runs **100% locally** using Ollama to ensure data privacy and zero cost.
 
-```bash
-# Install Ollama (Linux/Mac)
-curl -fsSL https://ollama.com/install.sh | sh
+ LegacyLens supports a **Hybrid Mode**:
 
-# Start the server
-ollama serve &
+**Option A: 100% Local (Privacy Focused)**
+   - Install [Ollama](https://ollama.com).
+   - Pull models: `ollama pull deepseek-coder:6.7b` and `ollama pull qwen2.5-coder:7b`.
+   - *No configuration needed — this is the default.*
 
-# Pull required models
-ollama pull deepseek-coder:6.7b  # Optimized for reasoning/coding
-ollama pull qwen2.5-coder:7b     # Optimized for instruction following
-```
+**Option B: Groq Cloud (Speed Focused)**
+   - Get a free API key from [console.groq.com](https://console.groq.com/).
+   - Create `apikey.env` in the project root:
+     ```env
+     groq=gsk_your_key_here
+     ```
+   - Run with `LLM_PROVIDER=groq`.
 
 ---
 
@@ -127,13 +132,20 @@ legacylens query "where is user input validated?"
 ### 3. Explain & Verify (Core Feature)
 Trigger the Multi-Agent loop to explain a specific function.
 ```bash
+# Local Mode
 legacylens explain "processFindForm"
+
+# Cloud/Fast Mode
+LLM_PROVIDER=groq legacylens explain "processFindForm"
 ```
 
 **Sample Output:**
->  **Verified** (Confidence: 85%)
+>  **Verified** (Confidence: 100%) | Fidelity: 83%
 >
 > **Explanation:** The `processFindForm` method handles GET requests... [Detailed description]
+>
+> **Critique:**
+> - Factual: ✓ | Completeness: 100% | Risks Flagged: 0
 >
 > **CodeBalance:**
 > -  Energy: [1/10] (Efficient)

@@ -18,19 +18,20 @@
 | Module | Status | Notes |
 | :--- | :--- | :--- |
 | **Hybrid Context** | ✅ 80% | Slicing + RAG working. Needs token counting. |
-| **Multi-Agent** | 🟡 60% | Writer+Critic working. Missing Finalizer & Compositional Breakdown. |
+| **Multi-Agent** | ✅ 90% | Writer+Critic working with Compositional Breakdown. |
 | **CodeBalance** | ✅ 85% | 3D Scoring working. Missing visualization. |
-| **Regeneration** | 🔴 0% | **CRITICAL GAP** for thesis defense. |
-| **Hint Enrichment**| 🔴 0% | Missing runtime patterns (threading/async detection). |
+| **Regeneration** | ✅ 100% | **Implemented via Tree-Sitter AST Similarity.** |
+| **Hint Enrichment**| 🟡 50% | Compositional Critic handles risk/completeness. Runtime patterns next. |
 
 ### 🚀 Sprint Plan to Submission (Mar 17)
 
 #### Week 7 (Feb 12-16): Critical Gap Fill
-- [ ] Implement **Regeneration Validation** (Phase 5) - *Thesis Critical*
-- [ ] Add **Finalizer Agent** (Phase 3 completion)
-- [ ] Refactor Critic to **Compositional Mode** (Phase 3 novelty)
+- [x] Implement **Regeneration Validation** (Phase 5) - *Thesis Critical*
+- [x] Refactor Critic to **Compositional Mode** (Phase 3 novelty)
+- [x] Add **LLM Provider Abstraction** (Groq support for speed)
 
 #### Week 8 (Feb 17-23): Context & Polish
+- [ ] Add **Finalizer Agent** (Phase 3 completion)
 - [ ] Implement **Hint Enrichment** (Runtime patterns, "Must-Cover" questions)
 - [ ] Add accurate **Token Counting**
 - [ ] First full end-to-end test on Spring PetClinic
@@ -64,3 +65,12 @@
 - **Action:** Full codebase audit against blueprint.
 - **Result:** Found strong core but missing thesis differentiators (Regeneration, Compositional Critic).
 - **Adjustment:** Re-aligned roadmap to focus on purely thesis-critical features for next 2 weeks.
+
+### Feature Sprint: February 14, 2026
+- **Goal:** Close Phase 1 gaps (Regeneration, Critical Verification).
+- **Result:**
+    - **Hybrid LLM:** Added `ProviderFactory` (Groq/Ollama toggle).
+    - **Regeneration:** Built `RegenerationValidator` using AST similarity (Tree-Sitter).
+    - **Critic:** Refactored to `Compositional Critic` (Factual/Completeness/Risk checks).
+    - **Verification:** 100% pass on synthetic bug injection and 5-function batch test.
+- **Momentum:** 10/10. Phase 1 feature complete.
