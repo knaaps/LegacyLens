@@ -2,9 +2,9 @@
 
 The orchestrator coordinates the multi-agent verification:
 1. Writer drafts an explanation
-2. Critic checks for hallucinations
-3. If failed, Writer revises with feedback
-4. Repeat until passed or max iterations
+2. Critic checks for hallucinations (returns PASS / FAIL / REVISE)
+3. If REVISE, Writer revises with feedback
+4. Repeat until PASS, FAIL, or max iterations (3)
 5. (Optional) Validate via code regeneration
 """
 
@@ -35,11 +35,21 @@ class VerifiedExplanation:
             parts.append(f"Fidelity: {self.fidelity_score:.0%}")
         return " | ".join(parts)
 
+    @property
+    def verdict(self) -> str:
+        """The Critic's final verdict (PASS/FAIL/REVISE)."""
+        return self.critique.verdict if self.critique else "UNKNOWN"
+
+    @property
+    def critique_json(self) -> dict | None:
+        """The Critic's full JSON output for logging/reports."""
+        return self.critique.to_json() if self.critique else None
+
 
 def generate_verified_explanation(
     code: str,
     context: dict,
-    max_iterations: int = 2,
+    max_iterations: int = 3,
     writer_model: str = "deepseek-coder:6.7b",
     critic_model: str = "qwen2.5-coder:7b",
     run_regeneration: bool = True,
@@ -48,10 +58,17 @@ def generate_verified_explanation(
     """
     Run the Writer→Critic verification loop, with optional regeneration check.
 
+    The loop uses three-state verdict logic:
+    - PASS:   Accept immediately, stop iterating
+    - REVISE: Writer gets feedback, tries again (up to max_iterations)
+    - FAIL:   Hard stop, explanation has fundamental problems
+
+    Early accept: If factual ≥ 90% and completeness ≥ 95%, accept on first pass.
+
     Args:
         code: Source code to explain
         context: Context dict (static_facts, callers, callees, etc.)
-        max_iterations: Maximum revision attempts
+        max_iterations: Maximum revision attempts (default 3)
         writer_model: Model for Writer agent
         critic_model: Model for Critic agent
         run_regeneration: If True, validate explanation via code regeneration
@@ -84,18 +101,22 @@ def generate_verified_explanation(
                 critique=None,
             )
 
-        # Step 2: Critic verifies
+        # Step 2: Critic verifies (returns PASS / FAIL / REVISE)
         critique = critique_explanation(
             code=code,
             explanation=explanation,
             model=critic_model,
         )
 
-        # If passed, we're done with the critic loop
-        if critique.passed:
+        # PASS → accept immediately
+        if critique.verdict == "PASS":
             break
 
-        # If failed, add feedback for next iteration
+        # FAIL → hard stop, don't bother revising
+        if critique.verdict == "FAIL":
+            break
+
+        # REVISE → feed issues back, let the Writer try again
         if critique.issues:
             revision_context["revision_feedback"] = (
                 f"Previous explanation had issues: {', '.join(critique.issues)}. "

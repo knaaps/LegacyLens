@@ -2,7 +2,7 @@
 
 from legacylens.agents.provider import llm_generate
 from legacylens.agents.writer import write_explanation
-from legacylens.agents.critic import critique_explanation, CritiqueResult
+from legacylens.agents.critic import critique_explanation, CritiqueResult, clear_critique_cache
 from legacylens.agents.orchestrator import generate_verified_explanation, VerifiedExplanation
 
 __all__ = [
@@ -10,6 +10,8 @@ __all__ = [
     "write_explanation",
     "critique_explanation",
     "CritiqueResult",
+    "clear_critique_cache",
     "generate_verified_explanation",
     "VerifiedExplanation",
 ]
+

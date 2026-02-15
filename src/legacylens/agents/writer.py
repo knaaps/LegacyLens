@@ -62,10 +62,12 @@ STATIC ANALYSIS FACTS:
 {related_code}
 
 INSTRUCTIONS:
-1. Explain what this code does in clear, simple terms
-2. Reference the static analysis facts where relevant
-3. Note any important patterns or potential issues
-4. Keep it concise but complete
+1. Explain the PURPOSE of this code in clear, simple terms
+2. Describe the PARAMETERS it accepts and the RETURN value it produces
+3. Note any ERROR HANDLING (exceptions, validation, edge cases)
+4. Mention SIDE EFFECTS (what it modifies, saves, calls, or invokes)
+5. Reference the static analysis facts where relevant
+6. Keep it concise but complete
 
 EXPLANATION:"""
 

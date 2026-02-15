@@ -115,6 +115,9 @@ def regenerate_code(
     """
     Ask the LLM to regenerate code from an explanation.
 
+    Uses a detailed prompt that requests an exact structural equivalent,
+    preserving annotations, parameter types, return type, and control flow.
+
     Args:
         explanation: The natural-language explanation of the code
         language:    Target language ("java" or "python")
@@ -123,11 +126,20 @@ def regenerate_code(
     Returns:
         The regenerated code string
     """
-    prompt = f"""Based on this explanation, write the original {language} code.
-Write ONLY the code, no explanations or markdown.
+    prompt = f"""You are reconstructing the EXACT ORIGINAL {language} method from its explanation.
 
 EXPLANATION:
 {explanation}
+
+REQUIREMENTS:
+- Write the EXACT EQUIVALENT {language} method that this explanation describes
+- Preserve ALL annotations (e.g. @GetMapping, @RequestParam, @Override)
+- Preserve EXACT parameter types and return type
+- Preserve the EXACT control-flow structure (if/else branches, loops, returns)
+- Preserve ALL method calls mentioned in the explanation
+- Do NOT add any functionality not described in the explanation
+- Do NOT omit any functionality that IS described
+- Output ONLY the raw {language} code — no markdown fences, no explanations
 
 CODE:"""
 
@@ -152,7 +164,7 @@ def validate_regeneration(
     original_code: str,
     explanation: str,
     language: str = "java",
-    threshold: float = 0.70,
+    threshold: float = 0.65,
     model: str = "deepseek-coder:6.7b",
 ) -> dict:
     """

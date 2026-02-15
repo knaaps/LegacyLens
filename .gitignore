@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 *.sqlite3
 src/*.egg-info/
-api_key.env
+apikey.env

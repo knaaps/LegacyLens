@@ -43,37 +43,72 @@ python faculty_demo.py
 ## Expected Output
 
 ```
-📚 STEP 1: AST Parsing & Indexing
-────────────────────────────────────────────────────────────────────────────────
-  Found 50 Java files
-  Extracted 12 methods from OwnerController
-  Stored 5 function embeddings
+  STEP 1   AST Parsing  (Tree-Sitter)
 
-🔍 STEP 2: Semantic Search (RAG)
-────────────────────────────────────────────────────────────────────────────────
-  Query: "find owners by last name"
-  
-  Top 3 Semantic Matches:
-  ┌──────┬───────────────────────────────┬────────────┐
-  │ Rank │ Function                      │ Similarity │
-  ├──────┼───────────────────────────────┼────────────┤
-  │    1 │ processFindForm               │      0.847 │
-  │    2 │ findPaginatedForOwnersLastName│      0.792 │
-  │    3 │ findByLastName                │      0.731 │
-  └──────┴───────────────────────────────┴────────────┘
+  Scanning PetClinic → 842 Java files found
+  Parsed OwnerController → 12 methods
 
-🤖 STEP 4: Multi-Agent Verification
-────────────────────────────────────────────────────────────────────────────────
-  Verification Metrics:
-  ┌────────────────┬────────┐
-  │ Metric         │ Value  │
-  ├────────────────┼────────┤
-  │ Verified       │ ✓ PASS │
-  │ Confidence     │ 95%    │
-  │ Factual Check  │ ✓      │
-  │ Completeness   │ 100%   │
-  │ Fidelity (AST) │ 83%    │
-  └────────────────┴────────┘
+  Method                Lines   CC
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  OwnerController           3    1
+  setAllowedFields          4    1
+  findOwner                 7    2
+  initCreationForm          4    1
+  processCreationForm      11    2
+  initFindForm              4    1
+  ✓ Extracts functions, complexity, and call edges from AST
+
+  ↵ Enter to continue...
+
+  STEP 2   Semantic Search  (CodeBERT + ChromaDB)
+
+  Loading CodeBERT & indexing functions...
+  Indexed 12 embeddings
+
+  Query: "find owner by last name"
+
+    1. OwnerController.initFindForm        dist=0.0186
+    2. OwnerController.initCreationForm    dist=0.0211
+    3. OwnerController.OwnerController     dist=0.0216
+  ✓ Finds relevant code by meaning, not keywords
+
+  ↵ Enter to continue...
+
+  STEP 3   Hybrid Context  (Call Graph + RAG)
+
+  Building call graph...
+  Graph nodes: 31
+  Target: OwnerController.processFindForm
+  Callers: 2  Callees: 2
+    └─ calls → findPaginatedForOwnersLastName, addPaginationModel
+  ✓ Deterministic 1-hop context assembled from call graph
+
+  STEP 4   Multi-Agent Verification  (Writer → Critic → Regen)
+
+  Provider: groq
+  Running Writer → Critic → Regeneration...
+
+╭────────────────────────────────────────────────────────────────────╮
+│ Code Explanation...                                                │
+╰────────────────────────────────────────────────────────────────────╯
+
+  Verified:     PASS
+  Confidence:   95%
+  Iterations:   1
+  Factual:      ✓
+  Completeness: 100%
+  Risks:        0
+  Fidelity:     83%
+  ✓ Explanation verified by Compositional Critic + Regeneration
+
+  STEP 5   CodeBalance  (Energy / Debt / Safety)
+
+  ⚡ Energy     ░░░░░░░░░░  0/10
+  🔧 Debt       ████░░░░░░  4/10
+  🛡️  Safety   ░░░░░░░░░░  0/10
+
+  Grade: A  (total 4/30)
+  ✓ 3-axis health score beyond cyclomatic complexity
 ```
 
 ## Configuration

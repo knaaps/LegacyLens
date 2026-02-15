@@ -224,7 +224,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
     result = generate_verified_explanation(
         code=code,
         context=context,
-        max_iterations=2,
+        max_iterations=3,
     )
     
     # Display verification status
@@ -237,10 +237,19 @@ def cmd_explain(args: argparse.Namespace) -> int:
     
     console.print(Panel(
         f"[bold {status_style}]{status_icon} {result.status_string}[/bold {status_style}]\n"
-        f"Iterations: {result.iterations}",
+        f"Verdict: {result.verdict} | Iterations: {result.iterations}",
         title="Verification Status",
         border_style=status_style,
     ))
+    
+    # Show critic's JSON verdict summary
+    if result.critique_json:
+        cj = result.critique_json
+        console.print(
+            f"  Factual: {'✓' if cj['factual_pass'] else '✗'} | "
+            f"Complete: {cj['completeness_pct']:.0f}% | "
+            f"Risks: {len(cj['risks_mentioned'])}"
+        )
     
     # Show issues if any
     if result.critique and result.critique.issues:

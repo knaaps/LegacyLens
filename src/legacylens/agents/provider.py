@@ -44,7 +44,14 @@ def _call_groq(model: str, prompt: str, temperature: float) -> str:
         messages=[{"role": "user", "content": prompt}],
         temperature=temperature,
     )
-    return response.choices[0].message.content.strip()
+    text = response.choices[0].message.content.strip()
+
+    # Strip Qwen3's chain-of-thought <think>...</think> tags.
+    # These contain internal reasoning that should not appear in output.
+    import re
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -52,9 +59,14 @@ def _call_groq(model: str, prompt: str, temperature: float) -> str:
 # ---------------------------------------------------------------------------
 
 # Model mapping: local Ollama names → Groq-supported equivalents
+# Qwen3-32B is specialized for code understanding and structured output,
+# producing better explanations and more reliable verification than
+# general-purpose models like Llama-3.3-70b.
 GROQ_MODEL_MAP = {
-    "deepseek-coder:6.7b": "llama-3.3-70b-versatile",
-    "qwen2.5-coder:7b": "llama-3.3-70b-versatile",
+    "deepseek-coder:6.7b": "qwen/qwen3-32b",       # Writer
+    "qwen2.5-coder:7b": "qwen/qwen3-32b",           # Critic
+    "qwen2.5-coder:7b-instruct": "qwen/qwen3-32b",  # Critic (instruct variant)
+    "phi4-mini": "llama-3.3-70b-versatile",          # Fast strict checking
 }
 
 
