@@ -127,12 +127,7 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     # of the full method name "getLastName".
     sub_ids = set()
     for ident in code_identifiers:
-        parts = re.findall(r'[a-z]+|[A-Z][a-z]*', ident)
-        sub_ids.update(p.lower() for p in parts if len(p) > 2)
-        # Also add common suffix combinations (e.g. lastName from getLastName)
-        for i in range(1, len(parts)):
-            combined = parts[i][0].lower() + parts[i][1:] + "".join(parts[i+1:])
-            sub_ids.add(combined.lower())
+        sub_ids.update(_split_camel_case(ident))
     code_identifiers_lower = {x.lower() for x in code_identifiers} | sub_ids
 
     # Extract identifiers from explanation that look like code references
