@@ -88,11 +88,7 @@ def slice_context(
     )
 
 
-def build_hybrid_context(
-    query: str,
-    graph: CallGraph,
-    rag_results: list[dict],
-) -> dict:
+def build_hybrid_context(query: str, graph: CallGraph, rag_results: list[dict]) -> dict:
     """
     Build hybrid context: try deterministic slicing first, fallback to RAG.
     

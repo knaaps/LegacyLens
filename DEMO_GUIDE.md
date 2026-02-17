@@ -3,10 +3,7 @@
 ## Quick Start
 
 ```bash
-# Ensure PetClinic is indexed
-legacylens index data/spring-petclinic
-
-# Run the demo
+# Run the demo (self-contained)
 python faculty_demo.py
 ```
 

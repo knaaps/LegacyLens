@@ -105,6 +105,22 @@ def clear_critique_cache() -> None:
 # Check 1: Factual accuracy (static — no LLM needed)
 # ---------------------------------------------------------------------------
 
+def _split_camel_case(identifier: str) -> set[str]:
+    """Helper: Split camelCase/PascalCase string into lowercase words."""
+    # 1. Split snake_case if present
+    parts = identifier.replace('_', ' ').split()
+    words = set()
+
+    for part in parts:
+        # 2. Insert space key transitions to handle CamelCase and acronyms
+        #    e.g. "XMLParser" -> "XML Parser", "camelCase" -> "camel Case"
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1 \2', part)
+        s2 = re.sub('([a-z0-9])([A-Z])', r'\1 \2', s1)
+        words.update(s2.lower().split())
+
+    return words
+
+
 def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str]]:
     """
     Cross-reference identifiers in the explanation against the source code.
