@@ -4,7 +4,7 @@ The orchestrator coordinates the multi-agent verification:
 1. Writer drafts an explanation
 2. Critic checks for hallucinations (returns PASS / FAIL / REVISE)
 3. If REVISE, Writer revises with feedback
-4. Repeat until PASS, FAIL, or max iterations (3)
+4. Repeat until PASS, FAIL, or max iterations (5)
 5. (Optional) Validate via code regeneration
 """
 
@@ -49,7 +49,7 @@ class VerifiedExplanation:
 def generate_verified_explanation(
     code: str,
     context: dict,
-    max_iterations: int = 3,
+    max_iterations: int = 5,
     writer_model: str = "deepseek-coder:6.7b",
     critic_model: str = "qwen2.5-coder:7b",
     run_regeneration: bool = True,
@@ -68,7 +68,7 @@ def generate_verified_explanation(
     Args:
         code: Source code to explain
         context: Context dict (static_facts, callers, callees, etc.)
-        max_iterations: Maximum revision attempts (default 3)
+        max_iterations: Maximum revision attempts (default 5)
         writer_model: Model for Writer agent
         critic_model: Model for Critic agent
         run_regeneration: If True, validate explanation via code regeneration

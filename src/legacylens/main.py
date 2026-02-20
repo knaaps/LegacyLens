@@ -224,7 +224,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
     result = generate_verified_explanation(
         code=code,
         context=context,
-        max_iterations=3,
+        max_iterations=5,
     )
     
     # Display verification status
