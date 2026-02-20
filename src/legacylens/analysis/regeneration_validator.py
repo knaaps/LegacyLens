@@ -39,33 +39,77 @@ def _get_parser(language: str):
 # AST similarity — compare tree structures, not text
 # ---------------------------------------------------------------------------
 
-def _flatten_ast(node) -> list[str]:
+def _flatten_ast(node, depth: int = 0) -> list[tuple[str, int]]:
     """
-    Flatten a tree-sitter AST into a list of node types.
+    Flatten a tree-sitter AST into a list of (node_type, depth) tuples.
 
     This captures the *structure* of the code (e.g., "if_statement",
     "for_statement", "method_invocation") while ignoring variable names,
     whitespace, and formatting differences.
 
-    Example:
-        "def add(a, b): return a + b"
-        → ["function_definition", "parameters", "identifier", "identifier",
-           "return_statement", "binary_operator", ...]
+    Including depth preserves nesting context that plain node-type lists lose.
     """
-    result = [node.type]
+    result = [(node.type, depth)]
     for child in node.children:
-        result.extend(_flatten_ast(child))
+        result.extend(_flatten_ast(child, depth + 1))
     return result
+
+
+def _extract_api_calls(node) -> set[str]:
+    """Extract method/function call names from an AST for call-overlap scoring."""
+    calls: set[str] = set()
+
+    def walk(n):
+        if n.type in ("method_invocation", "call_expression", "call"):
+            name_node = n.child_by_field_name("name") or n.child_by_field_name("function")
+            if name_node:
+                calls.add(name_node.text.decode("utf-8"))
+        for child in n.children:
+            walk(child)
+
+    walk(node)
+    return calls
+
+
+# Groups of method names the LLM may substitute for each other
+_CALL_SYNONYMS = {
+    frozenset({"find", "get", "load", "search", "retrieve", "lookup"}),
+    frozenset({"save", "persist", "insert", "create", "store"}),
+    frozenset({"delete", "remove", "drop", "erase"}),
+    frozenset({"update", "modify", "edit", "patch", "set"}),
+}
+
+
+def _normalize_call(name: str) -> str:
+    """
+    Collapse synonymous method names so API-call overlap is less strict.
+
+    Rules:
+        1. Strip get/set prefixes from accessors  (getName → Name)
+        2. Map synonymous verbs to a canonical form (findById → find)
+    """
+    import re as _re
+
+    # Strip get/set prefix if remainder is at least 3 chars
+    stripped = _re.sub(r'^(get|set)(?=[A-Z]\w{2,})', '', name)
+    lower = stripped.lower()
+
+    for group in _CALL_SYNONYMS:
+        if lower in group:
+            return sorted(group)[0]  # canonical = alphabetically first
+
+    return stripped
 
 
 def compute_ast_similarity(original: str, regenerated: str, language: str) -> float:
     """
     Compare two code snippets by their AST structure.
 
-    Uses a simple sequence-overlap approach:
-    1. Parse both snippets into ASTs
-    2. Flatten each AST into a list of node types
-    3. Compute overlap ratio (intersection / union)
+    Uses a weighted combination:
+        60 %  — Depth-aware sequence similarity (SequenceMatcher on
+                 (node_type, depth) tuples, preserving ordering)
+        40 %  — API call overlap (Jaccard on method-call names, so
+                 the regeneration must call the same methods)
 
     Args:
         original:    The original source code
@@ -75,32 +119,34 @@ def compute_ast_similarity(original: str, regenerated: str, language: str) -> fl
     Returns:
         Similarity score between 0.0 and 1.0
     """
+    from difflib import SequenceMatcher
+
     parser = _get_parser(language)
 
     tree_a = parser.parse(original.encode("utf-8"))
     tree_b = parser.parse(regenerated.encode("utf-8"))
 
-    nodes_a = _flatten_ast(tree_a.root_node)
-    nodes_b = _flatten_ast(tree_b.root_node)
+    seq_a = _flatten_ast(tree_a.root_node)
+    seq_b = _flatten_ast(tree_b.root_node)
 
-    if not nodes_a and not nodes_b:
+    if not seq_a and not seq_b:
         return 1.0  # Both empty — trivially identical
-    if not nodes_a or not nodes_b:
+    if not seq_a or not seq_b:
         return 0.0  # One is empty
 
-    # Sequence overlap: count how many node types appear in both lists
-    # Using multiset intersection (order-insensitive but count-sensitive)
-    from collections import Counter
+    # Structural similarity — order-sensitive, depth-aware
+    structural_sim = SequenceMatcher(None, seq_a, seq_b).ratio()
 
-    counts_a = Counter(nodes_a)
-    counts_b = Counter(nodes_b)
+    # API-call overlap — order-insensitive, synonym-aware
+    calls_a = {_normalize_call(c) for c in _extract_api_calls(tree_a.root_node)}
+    calls_b = {_normalize_call(c) for c in _extract_api_calls(tree_b.root_node)}
+    if calls_a or calls_b:
+        api_sim = len(calls_a & calls_b) / len(calls_a | calls_b)
+    else:
+        api_sim = 1.0  # No calls in either → assume match
 
-    # Intersection: min of each type count
-    intersection = sum((counts_a & counts_b).values())
-    # Union: max of each type count
-    union = sum((counts_a | counts_b).values())
-
-    return intersection / union if union > 0 else 0.0
+    # Weighted combination
+    return 0.6 * structural_sim + 0.4 * api_sim
 
 
 # ---------------------------------------------------------------------------

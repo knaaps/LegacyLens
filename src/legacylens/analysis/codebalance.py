@@ -170,6 +170,10 @@ def _score_debt(code: str) -> tuple[int, dict]:
         - Deep nesting (>3 levels: +1 per extra level)
         - Many parameters (>4: +1, >6: +2)
         - Low comment ratio (<10% comments in >20 lines: +1)
+        - Tech-debt markers: TODO, FIXME, HACK, XXX (+1 each, cap +3)
+        - Excessive coupling: >8 distinct method calls (+1, >12: +2)
+        - Magic numbers in conditions (+1)
+        - Multiple return points (>3: +1)
     
     Args:
         code: Source code of the function
@@ -217,6 +221,37 @@ def _score_debt(code: str) -> tuple[int, dict]:
             score += 1
             details["comments"] = "Low comment ratio (<10%)"
     
+    # ── New heuristics ──
+    
+    # Tech-debt markers
+    debt_keywords = ["TODO", "FIXME", "HACK", "XXX", "BUG"]
+    debt_hits = sum(1 for kw in debt_keywords if kw in code)
+    if debt_hits:
+        penalty = min(debt_hits, 3)
+        score += penalty
+        details["debt_markers"] = f"{debt_hits} debt marker(s)"
+    
+    # Excessive coupling (many distinct method calls → god-method smell)
+    call_count = len(re.findall(r'\b\w+\s*\(', code))
+    if call_count > 12:
+        score += 2
+        details["coupling"] = f"{call_count} method calls (god method)"
+    elif call_count > 8:
+        score += 1
+        details["coupling"] = f"{call_count} method calls (high coupling)"
+    
+    # Multiple return points → harder to follow
+    return_count = len(re.findall(r'\breturn\b', code))
+    if return_count > 3:
+        score += 1
+        details["returns"] = f"{return_count} return points"
+    
+    # Magic numbers in conditions (numeric literal in if/for/while)
+    magic = re.findall(r'(?:if|for|while)\s*\(.*\b\d{2,}\b', code)
+    if magic:
+        score += 1
+        details["magic_numbers"] = f"{len(magic)} magic number(s) in conditions"
+    
     # Cap at 10
     score = min(score, 10)
     return score, details
@@ -232,6 +267,10 @@ def _score_safety(code: str) -> tuple[int, dict]:
         - Hardcoded credentials
         - Shell injection
         - Exception swallowing
+        - Missing null checks on object parameters
+        - Unvalidated user input (@RequestParam without @Valid)
+        - Unsafe type casting
+        - Resource leaks (streams/connections without try-with-resources)
     
     Args:
         code: Source code of the function
@@ -243,10 +282,64 @@ def _score_safety(code: str) -> tuple[int, dict]:
     details = {}
     found_issues = []
     
+    # ── Pattern-based detection ──
     for pattern, description, points in SAFETY_PATTERNS:
         if re.search(pattern, code):
             score += points
             found_issues.append(description)
+    
+    # ── Java-specific: missing null checks ──
+    # If code dereferences method parameters without checking null
+    has_object_params = bool(re.search(
+        r'\b(String|Owner|Model|Page|Pageable|Object|List|Map)\s+\w+', code
+    ))
+    null_patterns = [
+        r'\bnull\b',
+        r'\bOptional\b',
+        r'@NonNull',
+        r'Objects\.requireNonNull',
+        r'Assert\.notNull',
+        r'Optional\.ofNullable',
+        r'if\s*\(\s*\w+\s*[!=]=\s*null',
+    ]
+    has_null_check = any(re.search(p, code) for p in null_patterns)
+    if has_object_params and not has_null_check:
+        score += 1
+        found_issues.append("No null guards on object parameters")
+    
+    # ── Unvalidated user input (Spring) ──
+    has_user_input = bool(re.search(r'@RequestParam|@PathVariable|@RequestBody', code))
+    validation_patterns = [
+        r'@Valid\b',
+        r'@Validated\b',
+        r'@NotNull\b',
+        r'@NotBlank\b',
+        r'@Size\b',
+        r'@Pattern\b',
+        r'@Min\b',
+        r'@Max\b',
+        r'BindingResult',       # Spring form validation
+        r'Errors\s+\w+',       # Spring Errors parameter
+    ]
+    has_validation = any(re.search(p, code) for p in validation_patterns)
+    if has_user_input and not has_validation:
+        score += 2
+        found_issues.append("User input without validation annotations")
+    
+    # ── Unsafe type casting ──
+    unsafe_casts = re.findall(r'\(\s*(String|Integer|Object)\s*\)\s*\w+', code)
+    if unsafe_casts:
+        score += 1
+        found_issues.append(f"{len(unsafe_casts)} unsafe type cast(s)")
+    
+    # ── Resource leaks (new InputStream/Connection/Statement without try-with-resources) ──
+    has_resource = bool(re.search(
+        r'new\s+(FileInputStream|BufferedReader|Connection|Statement|PreparedStatement)', code
+    ))
+    has_try_with = bool(re.search(r'try\s*\(', code))
+    if has_resource and not has_try_with:
+        score += 2
+        found_issues.append("Resource opened without try-with-resources")
     
     if found_issues:
         details["issues"] = found_issues

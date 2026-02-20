@@ -195,6 +195,8 @@ def step_3_context(functions: List[FunctionMetadata]) -> Optional[SlicedContext]
             file_path=fn.file_path,
             code=fn.code,
             calls=fn.calls,
+            field_reads=fn.field_reads,
+            field_writes=fn.field_writes,
         )
 
     # Count total edges

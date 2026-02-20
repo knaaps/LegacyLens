@@ -28,6 +28,14 @@ class FunctionMetadata:
     # Optional: class context
     class_name: Optional[str] = None
     
+    # ── Structural hints (populated by parser, consumed by CodeBalance/Critic) ──
+    has_try_catch: bool = False
+    has_loops: bool = False
+    return_count: int = 0         # Number of return statements
+    param_count: int = 0
+    field_reads: list[str] = field(default_factory=list)   # e.g. this.name
+    field_writes: list[str] = field(default_factory=list)  # e.g. this.name = ...
+    
     @property
     def qualified_name(self) -> str:
         """Return fully qualified name (ClassName.methodName or just functionName)."""
@@ -49,6 +57,12 @@ class FunctionMetadata:
             "calls": ",".join(self.calls),  # ChromaDB needs simple types
             "imports": ",".join(self.imports),
             "class_name": self.class_name or "",
+            "has_try_catch": self.has_try_catch,
+            "has_loops": self.has_loops,
+            "return_count": self.return_count,
+            "param_count": self.param_count,
+            "field_reads": ",".join(self.field_reads),
+            "field_writes": ",".join(self.field_writes),
         }
 
 

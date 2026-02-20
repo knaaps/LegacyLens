@@ -86,12 +86,20 @@ def _build_call_graph_from_db(retriever: CodeRetriever) -> CallGraph:
         calls_str = meta.get("calls", "")
         calls = [c.strip() for c in calls_str.split(",") if c.strip()]
         
+        # Parse field access from metadata (comma-separated strings)
+        fr_str = meta.get("field_reads", "")
+        fw_str = meta.get("field_writes", "")
+        f_reads = [f.strip() for f in fr_str.split(",") if f.strip()] if fr_str else []
+        f_writes = [f.strip() for f in fw_str.split(",") if f.strip()] if fw_str else []
+        
         graph.add_function(
             name=meta.get("name", "unknown"),
             qualified_name=meta.get("qualified_name", doc_id),
             file_path=meta.get("file_path", ""),
             code=code,
             calls=calls,
+            field_reads=f_reads,
+            field_writes=f_writes,
         )
     
     return graph

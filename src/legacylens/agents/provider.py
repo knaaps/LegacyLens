@@ -110,7 +110,7 @@ def _resolve_model(model: str, provider: str) -> str:
 def llm_generate(
     prompt: str,
     model: str = "deepseek-coder:6.7b",
-    temperature: float = 0.3,
+    temperature: float = 0.2,
 ) -> str:
     """
     Generate text from an LLM, using whichever backend is configured.

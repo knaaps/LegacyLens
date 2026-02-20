@@ -18,6 +18,8 @@ class FunctionNode:
     file_path: str
     code: str
     calls: list[str] = field(default_factory=list)
+    field_reads: list[str] = field(default_factory=list)
+    field_writes: list[str] = field(default_factory=list)
 
 
 class CallGraph:
@@ -46,6 +48,9 @@ class CallGraph:
         
         # name -> list of names it calls (direct from node.calls)
         self._callees: dict[str, list[str]] = defaultdict(list)
+        
+        # field_name -> list of function names that read/write it
+        self._field_accessors: dict[str, list[str]] = defaultdict(list)
     
     def add_function(
         self,
@@ -54,6 +59,8 @@ class CallGraph:
         file_path: str,
         code: str,
         calls: list[str],
+        field_reads: list[str] | None = None,
+        field_writes: list[str] | None = None,
     ) -> None:
         """
         Add a function to the graph.
@@ -64,6 +71,8 @@ class CallGraph:
             file_path: Source file path
             code: Source code of the function
             calls: List of function names this function calls
+            field_reads: Class fields this function reads (this.x)
+            field_writes: Class fields this function writes (this.x = ...)
         """
         node = FunctionNode(
             name=name,
@@ -71,6 +80,8 @@ class CallGraph:
             file_path=file_path,
             code=code,
             calls=calls,
+            field_reads=field_reads or [],
+            field_writes=field_writes or [],
         )
         
         self._nodes[name] = node
@@ -80,6 +91,11 @@ class CallGraph:
         for callee in calls:
             if name not in self._callers[callee]:
                 self._callers[callee].append(name)
+        
+        # Update field access index
+        for fld in (field_reads or []) + (field_writes or []):
+            if name not in self._field_accessors[fld]:
+                self._field_accessors[fld].append(name)
     
     def get_node(self, name: str) -> Optional[FunctionNode]:
         """Get a function node by name."""
@@ -112,6 +128,10 @@ class CallGraph:
     def has_function(self, name: str) -> bool:
         """Check if a function exists in the graph."""
         return name in self._nodes
+    
+    def get_field_accessors(self, field_name: str) -> list[str]:
+        """Return function names that read or write the given class field."""
+        return self._field_accessors.get(field_name, [])
     
     @property
     def size(self) -> int:

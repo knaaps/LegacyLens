@@ -3,10 +3,22 @@
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from legacylens.embeddings.code_embedder import CodeEmbedder
 from legacylens.parser.base import CodeParser, FunctionMetadata
 from legacylens.parser.java_parser import JavaParser
 from legacylens.parser.python_parser import PythonParser
+
+# Simple synonym table for query expansion
+_SYNONYMS = {
+    "find":   ["search", "get", "query", "retrieve", "lookup"],
+    "add":    ["create", "save", "insert", "register", "new"],
+    "update": ["edit", "modify", "change", "set", "patch"],
+    "delete": ["remove", "drop", "erase", "destroy"],
+    "list":   ["show", "display", "enumerate", "all"],
+    "validate": ["check", "verify", "assert", "ensure"],
+}
 
 
 class CodeRetriever:
@@ -31,6 +43,34 @@ class CodeRetriever:
             if parser.can_parse(file_path):
                 return parser
         return None
+    
+    # ── Query expansion ────────────────────────────────────────
+    
+    @staticmethod
+    def _expand_query(query: str) -> list[str]:
+        """
+        Expand a query with synonym-substituted variants.
+
+        Example:
+            "find owner by last name"
+            → ["search owner by last name", "get owner by last name"]
+        """
+        words = query.lower().split()
+        expanded: list[str] = []
+        for i, word in enumerate(words):
+            if word in _SYNONYMS:
+                for syn in _SYNONYMS[word][:2]:   # max 2 expansions per word
+                    variant = words.copy()
+                    variant[i] = syn
+                    expanded.append(" ".join(variant))
+        return expanded
+    
+    def _embed_expanded(self, query: str) -> list[float]:
+        """Embed original + expanded queries and average the vectors."""
+        variants = [query] + self._expand_query(query)[:2]
+        embeddings = [self.embedder.embed_code(v) for v in variants]
+        avg = np.mean(embeddings, axis=0)
+        return avg.tolist()
     
     def index_file(self, file_path: Path) -> int:
         """
@@ -124,7 +164,10 @@ class CodeRetriever:
         language: Optional[str] = None,
     ) -> list[dict]:
         """
-        Search for code matching a query.
+        Search for code matching a query, with query expansion.
+        
+        Expands the query with synonyms to improve recall, then
+        averages the embeddings before querying ChromaDB.
         
         Args:
             query: Natural language query or code snippet
@@ -134,17 +177,43 @@ class CodeRetriever:
         Returns:
             List of matching code snippets with metadata
         """
-        results = self.embedder.search(query, top_k=top_k, language_filter=language)
+        self.embedder._ensure_db_connected()
+        
+        # Embed with expansion
+        query_embedding = self._embed_expanded(query)
+        
+        # Build where filter if language specified
+        where_filter = None
+        if language:
+            where_filter = {"language": language}
+        
+        # Search
+        results = self.embedder._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=top_k,
+            where=where_filter,
+            include=["documents", "metadatas", "distances"],
+        )
+        
+        # Format results
+        formatted = []
+        for i in range(len(results["ids"][0])):
+            formatted.append({
+                "id": results["ids"][0][i],
+                "code": results["documents"][0][i],
+                "metadata": results["metadatas"][0][i],
+                "distance": results["distances"][0][i],
+            })
         
         # Enhance results with formatted output
-        for result in results:
+        for result in formatted:
             meta = result["metadata"]
             result["summary"] = (
                 f"{meta['qualified_name']} ({meta['language']}) "
                 f"- Complexity: {meta['complexity']}, Lines: {meta['line_count']}"
             )
         
-        return results
+        return formatted
     
     def get_context_for_explanation(
         self,

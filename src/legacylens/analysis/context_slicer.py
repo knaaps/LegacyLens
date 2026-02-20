@@ -14,24 +14,27 @@ class SlicedContext:
     """
     Deterministically sliced context for a target function.
     
-    Contains the target code plus related functions (callers/callees).
+    Contains the target code plus related functions:
+        - callers/callees  — call-graph neighbours
+        - data_coupled     — methods sharing the same class fields
     """
     
     target: FunctionNode
     callers: list[FunctionNode] = field(default_factory=list)
     callees: list[FunctionNode] = field(default_factory=list)
+    data_coupled: list[FunctionNode] = field(default_factory=list)
     
     @property
     def has_context(self) -> bool:
         """True if we have any related functions."""
-        return bool(self.callers or self.callees)
+        return bool(self.callers or self.callees or self.data_coupled)
     
     def to_context_dict(self) -> dict:
         """
         Convert to context dict for the Writer agent.
         
         Returns:
-            Dict with static_facts, callers, callees for prompting
+            Dict with static_facts, callers, callees, data_coupled for prompting
         """
         return {
             "code": self.target.code,
@@ -39,16 +42,19 @@ class SlicedContext:
                 "name": self.target.qualified_name,
                 "file_path": self.target.file_path,
                 "calls": self.target.calls,
+                "field_reads": self.target.field_reads,
+                "field_writes": self.target.field_writes,
             },
             "callers": [c.code for c in self.callers[:2]],  # Limit to 2
             "callees": [c.code for c in self.callees[:2]],  # Limit to 2
+            "data_coupled": [c.code for c in self.data_coupled[:2]],
         }
     
     @property
     def total_lines(self) -> int:
         """Approximate total lines of context."""
         lines = self.target.code.count("\n") + 1
-        for node in self.callers + self.callees:
+        for node in self.callers + self.callees + self.data_coupled:
             lines += node.code.count("\n") + 1
         return lines
 
@@ -61,6 +67,9 @@ def slice_context(
 ) -> SlicedContext | None:
     """
     Extract 1-hop context for a function from the call graph.
+    
+    In addition to call-graph neighbours, includes methods that
+    access the same class fields (data coupling).
     
     Args:
         target_name: Name of the function to get context for
@@ -81,10 +90,23 @@ def slice_context(
     # Get 1-hop callees (functions that target calls)
     callees = graph.get_callee_nodes(target_name)[:max_callees]
     
+    # ── Data-coupled methods (share class fields) ──
+    already = {target_name} | {c.name for c in callers} | {c.name for c in callees}
+    coupled_names: list[str] = []
+    for fld in target.field_reads + target.field_writes:
+        for name in graph.get_field_accessors(fld):
+            if name not in already and name not in coupled_names:
+                coupled_names.append(name)
+    data_coupled = [
+        graph.get_node(n) for n in coupled_names[:2]
+        if graph.get_node(n) is not None
+    ]
+    
     return SlicedContext(
         target=target,
         callers=callers,
         callees=callees,
+        data_coupled=data_coupled,
     )
 
 
