@@ -81,3 +81,12 @@
     - **Prompt Repetition:** Integrated Leviathan et al. (2025) prompt duplication strategy.
     - **Code-Gen Wrapper:** Added `agents/utils.py` to boost AST fidelity natively during regeneration validation.
 - **Momentum:** 10/10. Preparing for Ablation runs.
+
+### Kawabe Adaptation: March 02, 2026
+- **Goal:** Adapt sensible elements from Kawabe & Takano (2026) hierarchical agent framework.
+- **Assessment:** Existing architecture already implements hierarchy (Orchestrator→Writer→Critic sub-checks) and feedback propagation (REVISE/FAIL routing). Full rewrite skipped.
+- **Result:**
+    - **Structured Feedback:** Added `CritiqueResult.to_revision_prompt()` — categorizes failure into hallucination/completeness/safety buckets for targeted Writer revision.
+    - **Meta-Prompt Accumulation:** Added pitfall tracking (`utils.py`) — recurring failure patterns auto-accumulate across runs and are prepended to Writer prompts (MAML-style meta-learning).
+    - **Tests:** 9/9 new tests pass. 7/7 existing tests pass.
+- **Momentum:** 10/10. Ready for ablation runs with before/after comparison.

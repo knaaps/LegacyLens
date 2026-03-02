@@ -65,10 +65,11 @@
 -   **Must-Cover:** Questions like "How is thread safety handled?" or "What are the input validation rules?".
 
 ### 3.4 Phase 3: Multi-Agent Loop
-*(Status: Partially Implemented)*
--   **Writer:** Current implementation uses `deepseek-coder:6.7b`.
--   **Critic:** Needs upgrade to "Compositional" mode (separate checks for facts, completeness, risk).
--   **Finalizer:** Needs implementation (currently just Writer -> Critic loop).
+*(Status: Implemented with Structured Feedback)*
+-   **Writer:** Uses `deepseek-coder:6.7b`. Receives categorized failure feedback and accumulated pitfall guidance.
+-   **Critic:** Compositional mode with 3 sub-checks (Factual/Completeness/Risk). Outputs structured revision prompts (Kawabe-inspired).
+-   **Meta-Learning:** Recurring failure patterns accumulate across runs and are auto-prepended to Writer prompts (MAML-style).
+-   **Finalizer:** Needs implementation (currently just Writer → Critic loop).
 
 ### 3.5 Phase 4: CodeBalance
 *(Status: Implemented)*

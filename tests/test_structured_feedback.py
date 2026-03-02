@@ -83,7 +83,7 @@ def test_pitfall_save_and_load():
         assert loaded["hallucination"] == ["fake caller"]
 
 
-def test_pitfall_record_threshold():
+def test_pitfall_record_accumulates():
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "pitfalls.json"
         cr = CritiqueResult(
@@ -91,16 +91,19 @@ def test_pitfall_record_threshold():
             issues=["Explanation references names not found in code: badRef"],
             suggestions="", factual_passed=False, completeness_pct=60,
         )
-        # Record once — should NOT appear (threshold=2)
-        record_critique_pitfalls(cr, threshold=2, path=p)
-        data = load_known_pitfalls(p)
-        assert len(data["hallucination"]) == 0
-
-        # Record again — now reaches threshold
-        record_critique_pitfalls(cr, threshold=2, path=p)
+        # Record once — stored raw
+        record_critique_pitfalls(cr, path=p)
         data = load_known_pitfalls(p)
         assert len(data["hallucination"]) == 1
-        assert "badRef" in data["hallucination"][0]
+
+        # Record again — now 2 occurrences
+        record_critique_pitfalls(cr, path=p)
+        data = load_known_pitfalls(p)
+        assert len(data["hallucination"]) == 2
+
+        # Guidance should surface it (threshold=2 met)
+        guidance = build_pitfall_guidance(p, threshold=2)
+        assert "badRef" in guidance
 
 
 def test_build_guidance_empty():
@@ -113,9 +116,10 @@ def test_build_guidance_empty():
 def test_build_guidance_with_data():
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "pitfalls.json"
+        # Need 2 occurrences to meet default threshold
         data = {
-            "hallucination": ["invented caller processUser"],
-            "completeness": ["Missing coverage: error handling"],
+            "hallucination": ["invented caller processUser", "invented caller processUser"],
+            "completeness": ["Missing coverage: error handling", "Missing coverage: error handling"],
             "safety": [],
         }
         save_known_pitfalls(data, p)
@@ -132,7 +136,7 @@ if __name__ == "__main__":
     test_revision_prompt_clean()
     test_pitfall_load_empty()
     test_pitfall_save_and_load()
-    test_pitfall_record_threshold()
+    test_pitfall_record_accumulates()
     test_build_guidance_empty()
     test_build_guidance_with_data()
     print("All 9 tests passed ✓")

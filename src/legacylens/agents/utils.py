@@ -113,11 +113,12 @@ def save_known_pitfalls(data: dict, path: Path | None = None) -> None:
     p.write_text(json.dumps(data, indent=2))
 
 
-def record_critique_pitfalls(critique, threshold: int = 2, path: Path | None = None) -> dict:
-    """Record failure patterns from a CritiqueResult and prune by frequency.
+def record_critique_pitfalls(critique, path: Path | None = None) -> dict:
+    """Record failure patterns from a CritiqueResult.
 
-    Only patterns seen >= threshold times are kept, preventing one-off
-    noise from polluting the meta-prompt.
+    Appends raw issues to the pitfalls store.  Frequency-based pruning
+    happens at read time (build_pitfall_guidance), not here, so that
+    patterns can accumulate across multiple runs.
     """
     pitfalls = load_known_pitfalls(path)
 
@@ -130,38 +131,30 @@ def record_critique_pitfalls(critique, threshold: int = 2, path: Path | None = N
         elif "risk" in lower or "safety" in lower:
             pitfalls["safety"].append(issue)
 
-    # De-duplicate and keep only recurring patterns
-    for cat in pitfalls:
-        cnt = Counter(pitfalls[cat])
-        pitfalls[cat] = [item for item, c in cnt.most_common(5) if c >= threshold]
-
     save_known_pitfalls(pitfalls, path)
     return pitfalls
 
 
-def build_pitfall_guidance(path: Path | None = None) -> str:
+def build_pitfall_guidance(path: Path | None = None, threshold: int = 2) -> str:
     """Build a short instruction string from accumulated pitfalls.
 
-    This is prepended to the Writer's prompt so it avoids repeating
-    known mistakes — a lightweight meta-learning signal.
+    Only surfaces patterns seen >= threshold times — prevents one-off
+    noise from polluting the Writer's prompt.  This is prepended to the
+    Writer's system prompt so it avoids repeating known mistakes.
     """
     pitfalls = load_known_pitfalls(path)
     parts = []
 
-    if pitfalls.get("hallucination"):
-        parts.append(
-            "AVOID these known hallucination patterns: "
-            + "; ".join(pitfalls["hallucination"][:3])
-        )
-    if pitfalls.get("completeness"):
-        parts.append(
-            "Ensure coverage of these frequently missed aspects: "
-            + "; ".join(pitfalls["completeness"][:3])
-        )
-    if pitfalls.get("safety"):
-        parts.append(
-            "Always mention these safety concerns when present: "
-            + "; ".join(pitfalls["safety"][:3])
-        )
+    for category, label in [
+        ("hallucination", "AVOID these known hallucination patterns"),
+        ("completeness", "Ensure coverage of these frequently missed aspects"),
+        ("safety", "Always mention these safety concerns when present"),
+    ]:
+        raw = pitfalls.get(category, [])
+        # Apply threshold filter: only surface recurring patterns
+        cnt = Counter(raw)
+        frequent = [item for item, c in cnt.most_common(3) if c >= threshold]
+        if frequent:
+            parts.append(f"{label}: " + "; ".join(frequent))
 
     return "\n".join(parts)
