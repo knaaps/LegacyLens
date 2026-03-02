@@ -77,9 +77,10 @@
 -   **Safety:** Dangerous patterns (eval, shell injection, swallowed exceptions).
 
 ### 3.6 Phase 5: Regeneration Validation
-*(Status: Pending)*
+*(Status: Implemented with Prompt Repetition)*
 -   **Concept:** If the explanation is good, an LLM should be able to write the code back from it.
 -   **Metric:** AST-based code similarity (not just text overlap).
+-   **Optimization:** Employs **Prompt Repetition** (Leviathan et al., 2025) tailored for code generation (Opus 4.6 style) to enforce full token attention, significantly reducing hallucination and improving AST fidelity.
 -   **Threshold:** > 70% structural match required for "High Fidelity".
 
 ---

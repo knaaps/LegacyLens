@@ -79,6 +79,45 @@ class CritiqueResult:
         """Compact JSON string for logging."""
         return json.dumps(self.to_json(), indent=2)
 
+    def to_revision_prompt(self) -> str:
+        """Categorized feedback for the Writer on REVISE iterations.
+
+        Inspired by Kawabe & Takano (2026): structured failure signals
+        let the Writer target specific deficiencies rather than guessing
+        from a flat list.  Categorizes issues into hallucination,
+        completeness, and safety buckets for targeted revision.
+        """
+        parts = []
+
+        # Hallucination issues — factual mismatches
+        halluc = [i for i in self.issues if "not found in code" in i.lower()
+                  or "hallucin" in i.lower() or "invented" in i.lower()]
+        if halluc or not self.factual_passed:
+            parts.append(
+                "HALLUCINATION FIX: "
+                + (", ".join(halluc) if halluc else "Contains fabricated references.")
+            )
+
+        # Completeness gaps
+        missing = [i for i in self.issues if "missing coverage" in i.lower()]
+        if missing or self.completeness_pct < 80:
+            parts.append(
+                f"COMPLETENESS GAP ({self.completeness_pct:.0f}%): "
+                + (", ".join(missing) if missing else "Expand coverage of params/returns/side-effects.")
+            )
+
+        # Safety risks not mentioned
+        safety = [i for i in self.issues if "unmentioned risk" in i.lower()
+                  or "risk" in i.lower()]
+        if safety:
+            parts.append("SAFETY RISKS TO ADDRESS: " + ", ".join(safety))
+
+        # General suggestions
+        if self.suggestions:
+            parts.append(f"SUGGESTION: {self.suggestions}")
+
+        return "\n".join(parts) if parts else "Minor quality issues — revise for clarity."
+
 
 # ---------------------------------------------------------------------------
 # Verdict cache — memoize on (code_hash, explanation_hash)

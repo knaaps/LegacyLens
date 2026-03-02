@@ -54,6 +54,7 @@ def generate_verified_explanation(
     critic_model: str = "qwen2.5-coder:7b",
     run_regeneration: bool = True,
     language: str = "java",
+    repetition_variant: str | None = None,
 ) -> VerifiedExplanation:
     """
     Run the Writer→Critic verification loop, with optional regeneration check.
@@ -73,6 +74,8 @@ def generate_verified_explanation(
         critic_model: Model for Critic agent
         run_regeneration: If True, validate explanation via code regeneration
         language: Source code language ("java" or "python")
+        repetition_variant: Prompt repetition strategy for regeneration
+            (None, "simple", "verbose", or "x3"). See agents.utils.
 
     Returns:
         VerifiedExplanation with final result and metadata
@@ -116,12 +119,16 @@ def generate_verified_explanation(
         if critique.verdict == "FAIL":
             break
 
-        # REVISE → feed issues back, let the Writer try again
+        # REVISE → feed categorized issues back, let the Writer try again
         if critique.issues:
-            revision_context["revision_feedback"] = (
-                f"Previous explanation had issues: {', '.join(critique.issues)}. "
-                f"Suggestions: {critique.suggestions}"
-            )
+            revision_context["revision_feedback"] = critique.to_revision_prompt()
+
+            # Record failure patterns for meta-prompt accumulation
+            try:
+                from legacylens.agents.utils import record_critique_pitfalls
+                record_critique_pitfalls(critique)
+            except Exception:
+                pass  # Non-critical — don't break the loop
 
     # --- Optional: Regeneration validation ---
     fidelity_score = None
@@ -136,6 +143,7 @@ def generate_verified_explanation(
                 explanation=explanation,
                 language=language,
                 model=writer_model,
+                repetition_variant=repetition_variant,
             )
             fidelity_score = regen_result["fidelity"]
             fidelity_details = regen_result["details"]

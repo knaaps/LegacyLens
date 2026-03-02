@@ -74,3 +74,10 @@
     - **Critic:** Refactored to `Compositional Critic` (Factual/Completeness/Risk checks).
     - **Verification:** 100% pass on synthetic bug injection and 5-function batch test.
 - **Momentum:** 10/10. Phase 1 feature complete.
+
+### Metrics Sprint: March 01, 2026
+- **Goal:** Leverage advanced LLMs (Opus 4.6 style) for better regeneration metrics.
+- **Result:**
+    - **Prompt Repetition:** Integrated Leviathan et al. (2025) prompt duplication strategy.
+    - **Code-Gen Wrapper:** Added `agents/utils.py` to boost AST fidelity natively during regeneration validation.
+- **Momentum:** 10/10. Preparing for Ablation runs.

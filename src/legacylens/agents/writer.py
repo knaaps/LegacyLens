@@ -5,6 +5,7 @@ readable explanations while still staying grounded in the code.
 """
 
 from legacylens.agents.provider import llm_generate
+from legacylens.agents.utils import build_pitfall_guidance
 
 
 def write_explanation(
@@ -60,8 +61,14 @@ TARGET CODE:
 STATIC ANALYSIS FACTS:
 {facts_text}
 {related_code}
+"""
 
-INSTRUCTIONS:
+    # Prepend accumulated pitfall guidance (Kawabe-inspired meta-learning)
+    pitfall_text = build_pitfall_guidance()
+    if pitfall_text:
+        prompt += f"\nKNOWN PITFALLS (from prior runs):\n{pitfall_text}\n"
+
+    prompt += """INSTRUCTIONS:
 1. Explain the PURPOSE of this code in clear, simple terms
 2. Describe the PARAMETERS it accepts and the RETURN value it produces
 3. Note any ERROR HANDLING (exceptions, validation, edge cases)

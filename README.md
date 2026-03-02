@@ -25,7 +25,7 @@ LegacyLens orchestrates a **Writer-Critic Loop** with **Compositional Verificati
     1.  **Factual:** Cross-references names against the AST to catch hallucinations.
     2.  **Completeness:** Ensures coverage of params, returns, and side effects.
     3.  **Risk:** Flags unmentioned safety issues (e.g., SQL injection).
--   **Regeneration Validator:** Proves understanding by reconstructing the code from the explanation (AST fidelity check).
+-   **Regeneration Validator:** Proves understanding by reconstructing the code from the explanation (AST fidelity check). Now incorporates **Prompt Repetition (Leviathan et al. 2025)** to maximize structural fidelity and reduce hallucinations in code-generation mode.
 
 ###  3D CodeBalance Score
 Assessing code health scores of every function on three critical axes (0-10 scale):

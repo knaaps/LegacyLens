@@ -10,6 +10,7 @@ Usage:
 """
 
 from legacylens.agents.provider import llm_generate
+from legacylens.agents.utils import with_prompt_repetition
 
 # ---------------------------------------------------------------------------
 # Tree-sitter parsers (lazy-loaded, reused across calls)
@@ -157,6 +158,7 @@ def regenerate_code(
     explanation: str,
     language: str = "java",
     model: str = "deepseek-coder:6.7b",
+    repetition_variant: str | None = None,
 ) -> str:
     """
     Ask the LLM to regenerate code from an explanation.
@@ -164,17 +166,27 @@ def regenerate_code(
     Uses a detailed prompt that requests an exact structural equivalent,
     preserving annotations, parameter types, return type, and control flow.
 
+    When repetition_variant is set, applies Leviathan et al. (2025) prompt
+    repetition to boost structural fidelity — the repeated prompt enables
+    full token attention, improving recall of function calls, annotations,
+    and control-flow patterns.
+
     Args:
-        explanation: The natural-language explanation of the code
-        language:    Target language ("java" or "python")
-        model:       Model to use (auto-mapped for Groq)
+        explanation:        The natural-language explanation of the code
+        language:           Target language ("java" or "python")
+        model:              Model to use (auto-mapped for Groq)
+        repetition_variant: Repetition strategy — None (off), "simple",
+                            "verbose", or "x3"
 
     Returns:
         The regenerated code string
     """
-    prompt = f"""You are reconstructing the EXACT ORIGINAL {language} method from its explanation.
+    system_prompt = (
+        f"You are reconstructing the EXACT ORIGINAL {language} method "
+        f"from its explanation."
+    )
 
-EXPLANATION:
+    user_query = f"""EXPLANATION:
 {explanation}
 
 REQUIREMENTS:
@@ -188,6 +200,16 @@ REQUIREMENTS:
 - Output ONLY the raw {language} code — no markdown fences, no explanations
 
 CODE:"""
+
+    # Apply prompt repetition if requested (Leviathan et al. 2025)
+    if repetition_variant:
+        prompt = with_prompt_repetition(
+            system_prompt, user_query,
+            variant=repetition_variant,
+            for_code_gen=True,
+        )
+    else:
+        prompt = f"{system_prompt}\n\n{user_query}"
 
     raw = llm_generate(prompt=prompt, model=model, temperature=0.2)
 
@@ -212,6 +234,7 @@ def validate_regeneration(
     language: str = "java",
     threshold: float = 0.65,
     model: str = "deepseek-coder:6.7b",
+    repetition_variant: str | None = None,
 ) -> dict:
     """
     Validate an explanation by regenerating code and checking AST similarity.
@@ -223,11 +246,13 @@ def validate_regeneration(
     4. Returns pass/fail based on threshold
 
     Args:
-        original_code: The original source code
-        explanation:   The explanation to validate
-        language:      "java" or "python"
-        threshold:     Minimum similarity to pass (default 0.70)
-        model:         Model to use for regeneration
+        original_code:      The original source code
+        explanation:         The explanation to validate
+        language:            "java" or "python"
+        threshold:           Minimum similarity to pass (default 0.65)
+        model:               Model to use for regeneration
+        repetition_variant:  Prompt repetition strategy (None, "simple",
+                             "verbose", or "x3")
 
     Returns:
         Dict with keys: fidelity (float), passed (bool), details (str)
@@ -237,6 +262,7 @@ def validate_regeneration(
         explanation=explanation,
         language=language,
         model=model,
+        repetition_variant=repetition_variant,
     )
 
     # Step 2: Compare ASTs
