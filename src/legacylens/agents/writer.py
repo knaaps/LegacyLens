@@ -6,6 +6,7 @@ readable explanations while still staying grounded in the code.
 
 from legacylens.agents.provider import llm_generate
 from legacylens.agents.utils import build_pitfall_guidance
+from legacylens.analysis.hint_enricher import enrich_hints
 
 
 def write_explanation(
@@ -63,6 +64,12 @@ STATIC ANALYSIS FACTS:
 {related_code}
 """
 
+    # Hint enrichment — Phase 2: runtime patterns + must-cover questions
+    hints = enrich_hints(code)
+    hint_section = hints.to_prompt_section()
+    if hint_section:
+        prompt += f"\n\n{hint_section}"
+
     # Prepend accumulated pitfall guidance (Kawabe-inspired meta-learning)
     pitfall_text = build_pitfall_guidance()
     if pitfall_text:
@@ -74,7 +81,8 @@ STATIC ANALYSIS FACTS:
 3. Note any ERROR HANDLING (exceptions, validation, edge cases)
 4. Mention SIDE EFFECTS (what it modifies, saves, calls, or invokes)
 5. Reference the static analysis facts where relevant
-6. Keep it concise but complete
+6. Address every MUST-COVER QUESTION above (if any)
+7. Keep it concise but complete
 
 EXPLANATION:"""
 

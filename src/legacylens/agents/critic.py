@@ -327,18 +327,23 @@ def _check_risk_awareness(code: str, explanation: str) -> tuple[list[str], list[
 # Main LLM-based critique (requests structured JSON output)
 # ---------------------------------------------------------------------------
 
-def _llm_critique(code: str, explanation: str, model: str) -> tuple[bool, int, list[str], str]:
+def _llm_critique(
+    code: str, explanation: str, model: str,
+    repetition_variant: str | None = None,
+) -> tuple[bool, int, list[str], str]:
     """
     Ask the LLM to verify the explanation against the source code.
 
     The prompt requests structured JSON output for reliable parsing.
+    When repetition_variant is set, applies Leviathan et al. (2025)
+    prompt repetition to boost factual recall at temp=0.0.
 
     Returns:
         (passed, confidence, issues, suggestions)
     """
-    prompt = f"""You are a code review expert. Your job is to verify if an explanation accurately describes the code.
+    system_prompt = "You are a code review expert. Your job is to verify if an explanation accurately describes the code."
 
-SOURCE CODE:
+    user_query = f"""SOURCE CODE:
 ```
 {code}
 ```
@@ -357,6 +362,15 @@ PASSED: [yes/no]
 CONFIDENCE: [0-100]
 ISSUES: [comma-separated list of problems, or "none"]
 SUGGESTIONS: [how to improve, or "none needed"]"""
+
+    # Apply prompt repetition if requested (Leviathan et al. 2025)
+    if repetition_variant:
+        from legacylens.agents.utils import with_prompt_repetition
+        prompt = with_prompt_repetition(
+            system_prompt, user_query, variant=repetition_variant
+        )
+    else:
+        prompt = f"{system_prompt}\n\n{user_query}"
 
     raw = llm_generate(prompt=prompt, model=model, temperature=0.0)
     return _parse_critique_response(raw)
@@ -441,6 +455,7 @@ def critique_explanation(
     explanation: str,
     model: str = "qwen2.5-coder:7b",
     use_cache: bool = True,
+    repetition_variant: str | None = None,
 ) -> CritiqueResult:
     """
     Verify an explanation using compositional checks + LLM verification.
@@ -486,7 +501,8 @@ def critique_explanation(
     # --- LLM verification ---
     try:
         llm_passed, confidence, llm_issues, suggestions = _llm_critique(
-            code, explanation, model
+            code, explanation, model,
+            repetition_variant=repetition_variant,
         )
         all_issues.extend(llm_issues)
     except Exception as e:

@@ -74,8 +74,8 @@ def generate_verified_explanation(
         critic_model: Model for Critic agent
         run_regeneration: If True, validate explanation via code regeneration
         language: Source code language ("java" or "python")
-        repetition_variant: Prompt repetition strategy for regeneration
-            (None, "simple", "verbose", or "x3"). See agents.utils.
+        repetition_variant: Prompt repetition strategy for Critic verification
+            and regeneration (None, "simple", "verbose", or "x3").
 
     Returns:
         VerifiedExplanation with final result and metadata
@@ -109,6 +109,7 @@ def generate_verified_explanation(
             code=code,
             explanation=explanation,
             model=critic_model,
+            repetition_variant=repetition_variant,
         )
 
         # PASS → accept immediately

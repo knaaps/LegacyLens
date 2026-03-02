@@ -92,7 +92,22 @@ import json
 from pathlib import Path
 from collections import Counter
 
-_DEFAULT_PITFALLS_PATH = Path("results/known_pitfalls.json")
+# Store pitfalls next to the installed package, or in ~/.legacylens/ as fallback
+def _default_pitfalls_path() -> Path:
+    """Resolve a stable path for the pitfalls JSON regardless of CWD."""
+    # Try: project root (two levels above this file: src/legacylens/agents/utils.py)
+    try:
+        pkg_root = Path(__file__).resolve().parent.parent.parent.parent
+        candidate = pkg_root / "results" / "known_pitfalls.json"
+        # Only use if the project root looks right (has src/ or pyproject.toml)
+        if (pkg_root / "src").exists() or (pkg_root / "pyproject.toml").exists():
+            return candidate
+    except Exception:
+        pass
+    # Fallback: ~/.legacylens/
+    return Path.home() / ".legacylens" / "known_pitfalls.json"
+
+_DEFAULT_PITFALLS_PATH = _default_pitfalls_path()
 
 
 def load_known_pitfalls(path: Path | None = None) -> dict:
