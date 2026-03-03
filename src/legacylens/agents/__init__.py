@@ -9,6 +9,7 @@ from legacylens.agents.utils import (
 )
 from legacylens.agents.writer import write_explanation
 from legacylens.agents.critic import critique_explanation, CritiqueResult, clear_critique_cache
+from legacylens.agents.finalizer import finalize_explanation
 from legacylens.agents.orchestrator import generate_verified_explanation, VerifiedExplanation
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "critique_explanation",
     "CritiqueResult",
     "clear_critique_cache",
+    "finalize_explanation",
     "generate_verified_explanation",
     "VerifiedExplanation",
 ]

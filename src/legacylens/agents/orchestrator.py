@@ -1,11 +1,12 @@
-"""Orchestrator — Runs the Writer→Critic verification loop.
+"""Orchestrator — Runs the Writer→Critic→Finalizer verification pipeline.
 
 The orchestrator coordinates the multi-agent verification:
-1. Writer drafts an explanation
+1. Writer drafts an explanation (temperature=0.3)
 2. Critic checks for hallucinations (returns PASS / FAIL / REVISE)
-3. If REVISE, Writer revises with feedback
+3. If REVISE, Writer revises with structured feedback
 4. Repeat until PASS, FAIL, or max iterations (5)
-5. (Optional) Validate via code regeneration
+5. (Optional) Finalizer polishes the verified explanation
+6. (Optional) Validate via code regeneration
 """
 
 from dataclasses import dataclass, field
@@ -13,6 +14,7 @@ from typing import Optional
 
 from legacylens.agents.writer import write_explanation
 from legacylens.agents.critic import critique_explanation, CritiqueResult
+from legacylens.agents.finalizer import finalize_explanation
 
 
 @dataclass
@@ -53,15 +55,16 @@ def generate_verified_explanation(
     writer_model: str = "deepseek-coder:6.7b",
     critic_model: str = "qwen2.5-coder:7b",
     run_regeneration: bool = True,
+    run_finalizer: bool = False,
     language: str = "java",
     repetition_variant: str | None = None,
 ) -> VerifiedExplanation:
     """
-    Run the Writer→Critic verification loop, with optional regeneration check.
+    Run the Writer→Critic→Finalizer verification pipeline.
 
     The loop uses three-state verdict logic:
-    - PASS:   Accept immediately, stop iterating
-    - REVISE: Writer gets feedback, tries again (up to max_iterations)
+    - PASS:   Accept immediately, optionally polish with Finalizer
+    - REVISE: Writer gets structured feedback, tries again (up to max_iterations)
     - FAIL:   Hard stop, explanation has fundamental problems
 
     Early accept: If factual ≥ 90% and completeness ≥ 95%, accept on first pass.
@@ -70,9 +73,10 @@ def generate_verified_explanation(
         code: Source code to explain
         context: Context dict (static_facts, callers, callees, etc.)
         max_iterations: Maximum revision attempts (default 5)
-        writer_model: Model for Writer agent
+        writer_model: Model for Writer and Finalizer agents
         critic_model: Model for Critic agent
         run_regeneration: If True, validate explanation via code regeneration
+        run_finalizer: If True, run the Finalizer on verified explanations
         language: Source code language ("java" or "python")
         repetition_variant: Prompt repetition strategy for Critic verification
             and regeneration (None, "simple", "verbose", or "x3").
@@ -152,6 +156,17 @@ def generate_verified_explanation(
             fidelity_details = f"Regeneration error: {e}"
 
     is_verified = critique.passed if critique else False
+
+    # --- Optional: Finalizer (readability polish) ---
+    if run_finalizer and is_verified and explanation:
+        try:
+            explanation = finalize_explanation(
+                explanation=explanation,
+                code=code,
+                model=writer_model,
+            )
+        except Exception:
+            pass  # Non-critical — don't break the pipeline
 
     return VerifiedExplanation(
         explanation=explanation,

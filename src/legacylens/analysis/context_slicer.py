@@ -8,6 +8,17 @@ from dataclasses import dataclass, field
 
 from legacylens.analysis.call_graph import CallGraph, FunctionNode
 
+# Conservative token budget for local models (8k context minus prompt overhead)
+# Assumes ~4 chars/token — accurate for Java/Python code
+TOKEN_BUDGET = 6_000  # chars, roughly 1500 tokens of context headroom
+_CHARS_PER_TOKEN = 4
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: chars / 4 (works well for code)."""
+    return len(text) // _CHARS_PER_TOKEN
+
+
 
 @dataclass
 class SlicedContext:
@@ -32,10 +43,29 @@ class SlicedContext:
     def to_context_dict(self) -> dict:
         """
         Convert to context dict for the Writer agent.
-        
+
+        Applies token-aware pruning: if the total context exceeds TOKEN_BUDGET
+        chars, callers/callees are trimmed from the end until it fits.
+
         Returns:
             Dict with static_facts, callers, callees, data_coupled for prompting
         """
+        callers_code = [c.code for c in self.callers[:2]]
+        callees_code = [c.code for c in self.callees[:2]]
+
+        # Token-aware pruning: drop from end if budget exceeded
+        total_chars = (
+            len(self.target.code)
+            + sum(len(c) for c in callers_code)
+            + sum(len(c) for c in callees_code)
+        )
+        while total_chars > TOKEN_BUDGET and (callers_code or callees_code):
+            # Alternately drop callers and callees
+            if callees_code:
+                total_chars -= len(callees_code.pop())
+            elif callers_code:
+                total_chars -= len(callers_code.pop())
+
         return {
             "code": self.target.code,
             "static_facts": {
@@ -45,8 +75,8 @@ class SlicedContext:
                 "field_reads": self.target.field_reads,
                 "field_writes": self.target.field_writes,
             },
-            "callers": [c.code for c in self.callers[:2]],  # Limit to 2
-            "callees": [c.code for c in self.callees[:2]],  # Limit to 2
+            "callers": callers_code,
+            "callees": callees_code,
             "data_coupled": [c.code for c in self.data_coupled[:2]],
         }
     
