@@ -3,7 +3,6 @@
 from pathlib import Path
 import tempfile
 
-import pytest
 
 from legacylens.parser.base import FunctionMetadata
 from legacylens.parser.java_parser import JavaParser

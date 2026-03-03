@@ -9,7 +9,7 @@ The orchestrator coordinates the multi-agent verification:
 6. (Optional) Validate via code regeneration
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from legacylens.agents.writer import write_explanation

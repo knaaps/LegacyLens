@@ -1,0 +1,41 @@
+Run started:2026-03-03 19:39:09.745031+00:00
+
+Test results:
+>> Issue: [B615:huggingface_unsafe_download] Unsafe Hugging Face Hub download without revision pinning in from_pretrained()
+   Severity: Medium   Confidence: High
+   CWE: CWE-494 (https://cwe.mitre.org/data/definitions/494.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b615_huggingface_unsafe_download.html
+   Location: src/legacylens/embeddings/code_embedder.py:46:30
+45	            print(f"Loading {self.MODEL_NAME}...")
+46	            self._tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
+47	            self._model = AutoModel.from_pretrained(self.MODEL_NAME)
+
+--------------------------------------------------
+>> Issue: [B615:huggingface_unsafe_download] Unsafe Hugging Face Hub download without revision pinning in from_pretrained()
+   Severity: Medium   Confidence: High
+   CWE: CWE-494 (https://cwe.mitre.org/data/definitions/494.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b615_huggingface_unsafe_download.html
+   Location: src/legacylens/embeddings/code_embedder.py:47:26
+46	            self._tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
+47	            self._model = AutoModel.from_pretrained(self.MODEL_NAME)
+48	            self._model.eval()  # Set to evaluation mode
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 3636
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 7
+		Medium: 2
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 1
+		High: 8
+Files skipped (0):

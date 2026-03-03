@@ -20,7 +20,6 @@ Output:
 import sys
 import os
 import csv
-import json
 import argparse
 from pathlib import Path
 from datetime import datetime

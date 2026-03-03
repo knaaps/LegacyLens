@@ -13,7 +13,7 @@ from legacylens.analysis.codebalance import score_code, CodeBalanceScore
 from legacylens.analysis.hint_enricher import enrich_hints, HintResult
 from legacylens.analysis.call_graph import CallGraph
 from legacylens.analysis.context_slicer import (
-    slice_context, build_hybrid_context, SlicedContext, TOKEN_BUDGET, _estimate_tokens
+    slice_context, build_hybrid_context, TOKEN_BUDGET, _estimate_tokens
 )
 
 _pass = 0

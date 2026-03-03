@@ -19,13 +19,20 @@ LegacyLens prioritizes structural understanding over simple text matching:
 2.  **RAG Fallback:** Seamlessly blends in semantic search results from **ChromaDB** only when deterministic context is insufficient.
 
 ###  Multi-Agent Verification
-LegacyLens orchestrates a **Writer-Critic Loop** with **Compositional Verification**:
+LegacyLens orchestrates a **Writer-Critic-Finalizer Loop** with **Compositional Verification**:
 -   **Writer Agent:** Drafts a fluent, human-readable explanation using **Hybrid LLMs** (Groq cloud or local Ollama).
 -   **Compositional Critic:** Rigorously verifies the draft using a 3-layer audit:
     1.  **Factual:** Cross-references names against the AST to catch hallucinations.
     2.  **Completeness:** Ensures coverage of params, returns, and side effects.
     3.  **Risk:** Flags unmentioned safety issues (e.g., SQL injection).
 -   **Regeneration Validator:** Proves understanding by reconstructing the code from the explanation (AST fidelity check). Now incorporates **Prompt Repetition (Leviathan et al. 2025)** to maximize structural fidelity and reduce hallucinations in code-generation mode.
+-   **Finalizer Agent:** Polishes the verified explanation for maximum readability, structuring the output into clear paragraphs for purpose, parameters, return, and side effects.
+
+###  Evaluation & Visualization
+LegacyLens includes robust tools for analysis and measurement:
+-   **Ablation Runner:** Built-in scripts to test and compare different agent configurations.
+-   **BLEU/ROUGE Scorer:** Pure Python, zero-dependency metric calculation for evaluating explanation quality against references.
+-   **3D CodeBalance Visualization:** Generates dependency-free HTML 3D scatter plots of function CodeBalance scores.
 
 ###  3D CodeBalance Score
 Assessing code health scores of every function on three critical axes (0-10 scale):
@@ -47,17 +54,17 @@ The pipeline moves beyond simple RAG by enforcing structural rigor and multi-sta
                                                                     │
 ┌─────────────────────────────┐                                     ▼
 │ Phase 3: Multi-Agent Loop   │     ┌─────────────────────────────────────┐
-│ ┌────────┐    ┌────────┐    │     │ Phase 2: Smart Context Assembly     │
+│ ┌────────┐    ┌────────┐    │     │ Phase 2: Context Assembly & Hints   │
 │ │ Writer │◄──►│ Critic │    │◄─── │ • Primary: Deterministic Call Graph │
-│ └────────┘    └────────┘    │     │ • Backup: Vector RAG                │
-│      │ Passed?              │     └─────────────────────────────────────┘
-│      ▼                      │
-│ ┌───────────┐               │
-│ │ Regen Val.│ (AST Check)   │
-│ └─────┬─────┘               │
-└───────┼─────────────────────┘
-        │
-        ▼
+│ └────────┘    └────────┘    │     │ • Hints: Patterns & Risk detection  │
+│      │ Passed?              │     │ • Backup: Vector RAG                │
+│      ▼                      │     └─────────────────────────────────────┘
+│ ┌───────────────────────┐   │
+│ │ Regen Val / Finalizer │   │
+│ └───────────┬───────────┘   │
+└─────────────┼───────────────┘
+              │
+              ▼
 ┌───────────────────┐      ┌───────────────────────┐
 │ Verified Output   │ ◄──  │ Phase 4: CodeBalance  │
 │                   │      │ (3D Health Metrics)   │

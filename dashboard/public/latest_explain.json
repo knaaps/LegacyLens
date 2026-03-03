@@ -1,0 +1,43 @@
+{
+    "function": "OwnerController.processFindForm",
+    "file_path": "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+    "explanation": "This Spring MVC controller method handles GET requests to /owners for searching owners by last name. It receives an Owner model attribute with the lastName field populated from the query parameter. If the lastName is empty or null, it defaults to an empty string to match all owners. The method delegates to the OwnerRepository to find paginated results using findPaginatedForOwnersLastName, then calls addPaginationModel to set up pagination attributes on the Model. If exactly one owner matches, it redirects to that owner's detail page. Otherwise, it returns the owners list view.",
+    "verified": true,
+    "confidence": 95,
+    "verdict": "PASS",
+    "iterations": 1,
+    "fidelity": 0.83,
+    "codebalance": {
+        "energy": 4,
+        "debt": 2,
+        "safety": 1,
+        "grade": "B",
+        "details": {
+            "energy": {
+                "loops": "1 loop(s)"
+            },
+            "debt": {
+                "params": "5 parameters (many)"
+            },
+            "safety": {
+                "issues": [
+                    "No null guards on object parameters"
+                ]
+            }
+        }
+    },
+    "critic": {
+        "factual_pass": true,
+        "completeness_pct": 100,
+        "risks_mentioned": [],
+        "issues": []
+    },
+    "callers": [],
+    "callees": [
+        "findPaginatedForOwnersLastName",
+        "addPaginationModel"
+    ],
+    "context_source": "deterministic",
+    "code_snippet": "@GetMapping(\"/owners\")\npublic String processFindForm(@RequestParam(defaultValue = \"1\") int page, Owner owner, BindingResult result, Model model) {\n    if (owner.getLastName() == null) {\n        owner.setLastName(\"\");\n    }\n    Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, owner.getLastName());\n    if (ownersResults.isEmpty()) {\n        result.rejectValue(\"lastName\", \"notFound\", \"not found\");\n        return \"owners/findOwners\";\n    }\n    if (ownersResults.getTotalElements() == 1) {\n        owner = ownersResults.iterator().next();\n        return \"redirect:/owners/\" + owner.getId();\n    }\n    return addPaginationModel(page, model, ownersResults);\n}",
+    "timestamp": "2026-03-04T00:00:00+00:00"
+}

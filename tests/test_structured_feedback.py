@@ -1,7 +1,6 @@
 """Unit tests for structured feedback + meta-prompt accumulation."""
 
 import sys
-import json
 import tempfile
 from pathlib import Path
 

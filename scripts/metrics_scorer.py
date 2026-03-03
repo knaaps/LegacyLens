@@ -11,7 +11,6 @@ explanations for the ablation study metrics chapter.
 
 import re
 from collections import Counter
-from typing import Sequence
 
 
 # ---------------------------------------------------------------------------

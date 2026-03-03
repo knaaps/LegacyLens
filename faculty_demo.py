@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from rich.columns import Columns
-from rich.console import Console, Group
+from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.table import Table
