@@ -1,9 +1,7 @@
 """LegacyLens CLI - Index and query legacy code with multi-agent verification."""
 
 import argparse
-import json
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 from rich.console import Console
@@ -171,14 +169,8 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
-    """Explain code using multi-agent verification.
-
-    With --json, outputs a machine-readable JSON payload instead of
-    Rich-formatted text.  Combined with --out, writes the JSON to a
-    file (used by the Sidecar Dashboard for live polling).
-    """
+    """Explain code using multi-agent verification."""
     global _call_graph
-    json_mode: bool = getattr(args, "json", False) or bool(getattr(args, "out", None))
     query = args.query
     
     console.print(f"\n[bold]Explaining:[/bold] {query}\n")
@@ -319,42 +311,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
     score_table.add_row("🛡️ Safety", _color(balance.safety), safety_detail)
     
     console.print(score_table)
-
-    # --- JSON output mode (for Sidecar Dashboard) ---
-    if json_mode:
-        payload = {
-            "function": meta.get("qualified_name", query),
-            "file_path": meta.get("file_path", ""),
-            "explanation": result.explanation,
-            "verified": result.verified,
-            "confidence": result.confidence,
-            "verdict": result.verdict,
-            "iterations": result.iterations,
-            "fidelity": result.fidelity_score,
-            "codebalance": {
-                "energy": balance.energy,
-                "debt": balance.debt,
-                "safety": balance.safety,
-                "grade": balance.grade,
-                "details": balance.details,
-            },
-            "critic": result.critique_json,
-            "callers": context.get("callers", []),
-            "callees": context.get("callees", []),
-            "context_source": context.get("source", "unknown"),
-            "code_snippet": code[:2000],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        out_path: str | None = getattr(args, "out", None)
-        if out_path:
-            Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(out_path, "w") as f:
-                json.dump(payload, f, indent=2, default=str)
-            console.print(f"[green]JSON written to {out_path}[/green]")
-        else:
-            print(json.dumps(payload, indent=2, default=str))
-
+    
     return 0
 
 
@@ -396,17 +353,6 @@ def main() -> int:
     # Explain command
     explain_parser = subparsers.add_parser("explain", help="Explain code using AI")
     explain_parser.add_argument("query", help="What to explain (e.g., 'processFindForm')")
-    explain_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output machine-readable JSON (for Sidecar Dashboard)",
-    )
-    explain_parser.add_argument(
-        "--out",
-        metavar="PATH",
-        default=None,
-        help="Write JSON to PATH instead of stdout (implies --json)",
-    )
     explain_parser.set_defaults(func=cmd_explain)
     
     # Stats command

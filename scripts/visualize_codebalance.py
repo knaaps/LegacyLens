@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from legacylens.analysis.codebalance import score_code
 
 # ---------------------------------------------------------------------------
-# Sample corpus (PetClinic) — used when no CSV is provided
+# Spring PetClinic corpus (13 functions)
 # ---------------------------------------------------------------------------
 
 SAMPLE_FUNCTIONS = [
@@ -69,23 +69,279 @@ SAMPLE_FUNCTIONS = [
     }"""},
     {"name": "processFindForm",     "category": "Complex Data Flow","code": """
     @GetMapping("/owners")
-    public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
-        if (owner.getLastName() == null) {
-            owner.setLastName("");
-        }
-        Collection<Owner> results = this.owners.findByLastName(owner.getLastName());
-        if (results.isEmpty()) {
+    public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner,
+            BindingResult result, Model model) {
+        String lastName = owner.getLastName();
+        if (lastName == null) { lastName = ""; }
+        Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
+        if (ownersResults.isEmpty()) {
             result.rejectValue("lastName", "notFound", "not found");
             return "owners/findOwners";
-        } else if (results.size() == 1) {
-            owner = results.iterator().next();
+        }
+        if (ownersResults.getTotalElements() == 1) {
+            owner = ownersResults.iterator().next();
             return "redirect:/owners/" + owner.getId();
-        } else {
-            model.put("selections", results);
-            return "owners/ownersList";
+        }
+        return addPaginationModel(page, model, ownersResults);
+    }"""},
+    {"name": "processUpdateOwnerForm", "category": "Update — ID Validation", "code": """
+    @PostMapping("/owners/{ownerId}/edit")
+    public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result,
+            @PathVariable("ownerId") int ownerId, RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            redirectAttributes.addFlashAttribute("error", "There was an error in updating the owner.");
+            return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
+        }
+        if (!Objects.equals(owner.getId(), ownerId)) {
+            result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
+            redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
+            return "redirect:/owners/{ownerId}/edit";
+        }
+        owner.setId(ownerId);
+        this.owners.save(owner);
+        redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
+        return "redirect:/owners/{ownerId}";
+    }"""},
+    {"name": "showOwner",           "category": "Detail View",     "code": """
+    @GetMapping("/owners/{ownerId}")
+    public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
+        ModelAndView mav = new ModelAndView("owners/ownerDetails");
+        Optional<Owner> optionalOwner = this.owners.findById(ownerId);
+        Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
+                "Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
+        mav.addObject(owner);
+        return mav;
+    }"""},
+    {"name": "Pet.processUpdateForm", "category": "Update — Name/Date Validation", "code": """
+    @PostMapping("/pets/{petId}/edit")
+    public String processUpdateForm(Owner owner, @Valid Pet pet, BindingResult result,
+            RedirectAttributes redirectAttributes) {
+        String petName = pet.getName();
+        if (StringUtils.hasText(petName)) {
+            Pet existingPet = owner.getPet(petName, false);
+            if (existingPet != null && !Objects.equals(existingPet.getId(), pet.getId())) {
+                result.rejectValue("name", "duplicate", "already exists");
+            }
+        }
+        LocalDate currentDate = LocalDate.now();
+        if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(currentDate)) {
+            result.rejectValue("birthDate", "typeMismatch.birthDate");
+        }
+        if (result.hasErrors()) { return VIEWS_PETS_CREATE_OR_UPDATE_FORM; }
+        updatePetDetails(owner, pet);
+        redirectAttributes.addFlashAttribute("message", "Pet details has been edited");
+        return "redirect:/owners/{ownerId}";
+    }"""},
+    {"name": "showVetList",         "category": "Paginated View",  "code": """
+    @GetMapping("/vets.html")
+    public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
+        Vets vets = new Vets();
+        Page<Vet> paginated = findPaginated(page);
+        vets.getVetList().addAll(paginated.toList());
+        return addPaginationModel(page, paginated, model);
+    }"""},
+    {"name": "showResourcesVetList","category": "REST Endpoint",   "code": """
+    @GetMapping({ "/vets" })
+    public @ResponseBody Vets showResourcesVetList() {
+        Vets vets = new Vets();
+        vets.getVetList().addAll(this.vetRepository.findAll());
+        return vets;
+    }"""},
+    {"name": "Owner.addVisit",      "category": "Domain Logic",    "code": """
+    public void addVisit(Integer petId, Visit visit) {
+        Assert.notNull(petId, "Pet identifier must not be null!");
+        Assert.notNull(visit, "Visit must not be null!");
+        Pet pet = getPet(petId);
+        Assert.notNull(pet, "Invalid Pet identifier!");
+        pet.addVisit(visit);
+    }"""},
+    {"name": "Owner.getPet",        "category": "Domain Logic",    "code": """
+    public Pet getPet(String name, boolean ignoreNew) {
+        for (Pet pet : getPets()) {
+            String compName = pet.getName();
+            if (compName != null && compName.equalsIgnoreCase(name)) {
+                if (!ignoreNew || !pet.isNew()) {
+                    return pet;
+                }
+            }
+        }
+        return null;
+    }"""},
+    {"name": "Owner.addPet",        "category": "Domain Logic",    "code": """
+    public void addPet(Pet pet) {
+        if (pet.isNew()) {
+            getPets().add(pet);
         }
     }"""},
 ]
+
+# ---------------------------------------------------------------------------
+# Apache Ant-style legacy corpus (12 functions) — for second plot
+# ---------------------------------------------------------------------------
+
+ANT_FUNCTIONS = [
+    {"name": "execute",             "category": "Build Task",       "code": """
+    public void execute() throws BuildException {
+        if (srcdir == null) {
+            throw new BuildException("srcdir attribute must be set", getLocation());
+        }
+        String[] files = srcdir.list();
+        for (String file : files) {
+            if (file.endsWith(".java")) {
+                compileFile(new File(srcdir, file));
+            }
+        }
+    }"""},
+    {"name": "compileFile",         "category": "File Processing",  "code": """
+    private void compileFile(File sourceFile) throws BuildException {
+        FileInputStream fis = null;
+        try {
+            fis = new FileInputStream(sourceFile);
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+        } catch (Exception e) {
+            throw new BuildException("Compilation failed for: " + sourceFile.getName());
+        } finally {
+            if (fis != null) {
+                try { fis.close(); } catch (Exception ignore) {}
+            }
+        }
+    }"""},
+    {"name": "log",                 "category": "Logging",          "code": """
+    protected void log(String message) {
+        String timestamp = new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date());
+        System.out.println("[" + timestamp + "] " + message);
+    }"""},
+    {"name": "copyFiles",           "category": "File Processing",  "code": """
+    private void copyFiles(File src, File dest) throws BuildException {
+        if (!dest.exists()) { dest.mkdirs(); }
+        String[] files = src.list();
+        if (files == null) return;
+        for (String file : files) {
+            File srcFile = new File(src, file);
+            File destFile = new File(dest, file);
+            if (srcFile.isDirectory()) {
+                copyFiles(srcFile, destFile);
+            } else {
+                copyBytes(srcFile, destFile);
+            }
+        }
+    }"""},
+    {"name": "copyBytes",           "category": "File Processing",  "code": """
+    private void copyBytes(File src, File dest) throws BuildException {
+        FileInputStream in = null;
+        FileOutputStream out = null;
+        try {
+            in = new FileInputStream(src);
+            out = new FileOutputStream(dest);
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) >= 0) {
+                out.write(buf, 0, n);
+            }
+        } catch (Exception e) {
+            throw new BuildException("Copy failed: " + e.getMessage());
+        } finally {
+            try { if (in != null) in.close(); } catch (Exception ignore) {}
+            try { if (out != null) out.close(); } catch (Exception ignore) {}
+        }
+    }"""},
+    {"name": "deleteDir",           "category": "File System",      "code": """
+    private boolean deleteDir(File dir) {
+        if (dir.isDirectory()) {
+            String[] children = dir.list();
+            for (int i = 0; i < children.length; i++) {
+                boolean success = deleteDir(new File(dir, children[i]));
+                if (!success) return false;
+            }
+        }
+        return dir.delete();
+    }"""},
+    {"name": "runCommand",          "category": "Shell Execution",  "code": """
+    private int runCommand(String command) throws BuildException {
+        try {
+            Process proc = Runtime.getRuntime().exec(command);
+            proc.waitFor();
+            return proc.exitValue();
+        } catch (Exception e) {
+            throw new BuildException("Command failed: " + command + " - " + e.getMessage());
+        }
+    }"""},
+    {"name": "parseProperties",     "category": "Configuration",    "code": """
+    private Properties parseProperties(File propFile) {
+        Properties props = new Properties();
+        try {
+            FileInputStream fis = new FileInputStream(propFile);
+            props.load(fis);
+            fis.close();
+        } catch (Exception e) {
+            log("Warning: could not load " + propFile.getName());
+        }
+        return props;
+    }"""},
+    {"name": "buildClasspath",      "category": "Build Config",     "code": """
+    private String buildClasspath(List<File> jars) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < jars.size(); i++) {
+            if (i > 0) sb.append(File.pathSeparator);
+            sb.append(jars.get(i).getAbsolutePath());
+        }
+        return sb.toString();
+    }"""},
+    {"name": "validateConfig",      "category": "Validation",       "code": """
+    private void validateConfig() throws BuildException {
+        if (srcdir == null || !srcdir.exists()) {
+            throw new BuildException("srcdir must exist: " + srcdir);
+        }
+        if (destdir == null) {
+            throw new BuildException("destdir attribute must be set");
+        }
+        if (!destdir.exists()) { destdir.mkdirs(); }
+        if (classpath == null || classpath.isEmpty()) {
+            log("Warning: no classpath set - using JVM defaults");
+        }
+    }"""},
+    {"name": "writeReport",         "category": "Reporting",        "code": """
+    private void writeReport(String report, File outFile) throws BuildException {
+        try {
+            java.io.FileWriter fw = new java.io.FileWriter(outFile, true);
+            fw.write(report);
+            fw.write(System.getProperty("line.separator"));
+            fw.close();
+        } catch (Exception e) {
+            throw new BuildException("Failed to write report: " + e.getMessage());
+        }
+    }"""},
+    {"name": "findFiles",           "category": "File System",      "code": """
+    private List<File> findFiles(File dir, String extension) {
+        List<File> result = new ArrayList<File>();
+        if (!dir.isDirectory()) return result;
+        for (File f : dir.listFiles()) {
+            if (f.isDirectory()) {
+                result.addAll(findFiles(f, extension));
+            } else if (f.getName().endsWith(extension)) {
+                result.add(f);
+            }
+        }
+        return result;
+    }"""},
+]
+
+CORPORA = {
+    "petclinic": {
+        "label": "Spring PetClinic",
+        "functions": SAMPLE_FUNCTIONS,
+        "output": "codebalance_3d_petclinic.html",
+    },
+    "ant": {
+        "label": "Apache Ant-style Legacy",
+        "functions": ANT_FUNCTIONS,
+        "output": "codebalance_3d_ant.html",
+    },
+}
 
 # ---------------------------------------------------------------------------
 # HTML template — self-contained 3D scatter with Three.js-style via CSS transforms
@@ -130,7 +386,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
 <header>
   <h1>🔭 LegacyLens — CodeBalance 3D Report</h1>
-  <p>Generated {timestamp} &nbsp;|&nbsp; {n} functions analysed &nbsp;|&nbsp; Spring PetClinic corpus</p>
+  <p>Generated {timestamp} &nbsp;|&nbsp; {n} functions analysed &nbsp;|&nbsp; {corpus_label} corpus</p>
 </header>
 
 <div class="summary-cards">
@@ -271,10 +527,16 @@ def grade_color(g: str) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Generate 3D CodeBalance HTML report")
     parser.add_argument("--output-dir", default="results", help="Output directory (default: results/)")
+    parser.add_argument("--corpus", default="petclinic", choices=CORPORA.keys(), help="Corpus to analyze (default: petclinic)")
     args = parser.parse_args()
 
-    funcs = SAMPLE_FUNCTIONS
-    print(f"Scoring {len(funcs)} functions...")
+    corpus_key = args.corpus
+    corpus_data = CORPORA[corpus_key]
+    funcs = corpus_data["functions"]
+    corpus_label = corpus_data["label"]
+    output_filename = corpus_data["output"]
+
+    print(f"Scoring {len(funcs)} functions from {corpus_label} corpus...")
 
     rows = []
     for fn in funcs:
@@ -306,12 +568,13 @@ def main():
         avg_debt=avg_d,
         avg_safety=avg_s,
         grade_dist=grade_dist,
+        corpus_label=corpus_label,
         data_json=json.dumps(rows, indent=2),
     )
 
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    html_path = out / "codebalance_3d.html"
+    html_path = out / output_filename
     html_path.write_text(html)
     print(f"\nHTML report saved: {html_path}")
     print("Open it in any browser — no dependencies required.")
