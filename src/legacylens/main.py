@@ -41,6 +41,13 @@ def cmd_index(args: argparse.Namespace) -> int:
     with console.status("[bold green]Building call graph..."):
         _call_graph = _build_call_graph_from_db(retriever)
     
+    with console.status("[bold green]Exporting data for dashboard..."):
+        _export_function_data(retriever)
+        # Save repo root so the dashboard can resolve relative paths
+        data_dir = Path.home() / '.legacylens'
+        data_dir.mkdir(exist_ok=True)
+        (data_dir / 'repo_root.txt').write_text(str(repo_path))
+    
     # Display results
     table = Table(title="Indexing Complete")
     table.add_column("Metric", style="cyan")
@@ -101,8 +108,43 @@ def _build_call_graph_from_db(retriever: CodeRetriever) -> CallGraph:
             field_reads=f_reads,
             field_writes=f_writes,
         )
-    
     return graph
+
+
+def _export_function_data(retriever: CodeRetriever) -> None:
+    """Export function data to JSON for the web dashboard."""
+    import json
+    from legacylens.analysis.codebalance import score_code
+    
+    embedder = retriever.embedder
+    embedder._ensure_db_connected()
+    
+    results = embedder._collection.get(include=["documents", "metadatas"])
+    
+    functions = []
+    if results["ids"]:
+        for i, doc_id in enumerate(results["ids"]):
+            meta = results["metadatas"][i]
+            code = results["documents"][i]
+            
+            func_name = meta.get("name", "unknown")
+            scores = score_code(code, function_name=func_name)
+            
+            functions.append({
+                'name': meta.get("qualified_name", func_name),
+                'file': meta.get("file_path", ""),
+                'line_start': meta.get("start_line", 0),
+                'line_end': meta.get("end_line", 0),
+                'energy': scores.energy,
+                'debt': scores.debt,
+                'safety': scores.safety,
+                'code': code
+            })
+            
+    data_dir = Path.home() / '.legacylens'
+    data_dir.mkdir(exist_ok=True)
+    with open(data_dir / 'function_data.json', 'w') as f:
+        json.dump(functions, f, indent=2)
 
 
 def cmd_query(args: argparse.Namespace) -> int:
@@ -165,6 +207,26 @@ def cmd_stats(args: argparse.Namespace) -> int:
     table.add_row("DB Path", stats["db_path"])
     
     console.print(table)
+    return 0
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Launch the LegacyLens web dashboard."""
+    import webbrowser
+    import threading
+    from legacylens.web.app import create_app
+    
+    port = args.port
+    app = create_app()
+    
+    def open_browser():
+        webbrowser.open(f'http://127.0.0.1:{port}')
+    
+    console.print(f"[bold green]Starting Dashboard on port {port}...[/bold green]")
+    threading.Timer(1.5, open_browser).start()
+    
+    # Run the Flask app
+    app.run(debug=False, port=port, use_reloader=False)
     return 0
 
 
@@ -362,6 +424,11 @@ def main() -> int:
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="Show database statistics")
     stats_parser.set_defaults(func=cmd_stats)
+    
+    # Dashboard command
+    dashboard_parser = subparsers.add_parser("dashboard", help="Launch the web dashboard")
+    dashboard_parser.add_argument("--port", type=int, default=5000, help="Port to run the server on")
+    dashboard_parser.set_defaults(func=cmd_dashboard)
     
     args = parser.parse_args()
     return args.func(args)

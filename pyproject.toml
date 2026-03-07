@@ -39,6 +39,7 @@ dependencies = [
     # Utilities
     "pydantic>=2.5.0",
     "rich>=13.0.0",
+    "Flask>=2.3.0",
 ]
 
 [project.optional-dependencies]

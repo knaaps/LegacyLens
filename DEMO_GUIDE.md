@@ -22,6 +22,8 @@ scores in a single run. No prior `legacylens index` step is required.
 | **3 — Call Graph** | In-memory graph | Project-wide | Node/edge stats, most-connected functions, context tree |
 | **4 — Multi-Agent** | Writer → Critic → Regen | `processFindForm` | Up to **5** revision loops with compositional checks |
 | **5 — CodeBalance** | 3-axis scoring | Two functions | Side-by-side Energy / Debt / Safety comparison |
+| **6 — Web Dashboard** | Flask + Chart.js + Plotly | Full codebase | Interactive business analytics and 3D risk exploration |
+
 
 ### Step 1 — Cross-Package Parsing
 
@@ -154,6 +156,19 @@ Two functions are scored side-by-side so the audience can compare code health:
   │ Grade: A  (total 4/30)     ││ Grade: A  (total 4/30)       │
   ╰────────────────────────────╯╰──────────────────────────────╯
   ✓ Comparative view reveals relative code health
+
+─────────────────────────── STEP 6 ────────────────────────────
+  Web Dashboard  (Flask + Analytics)
+
+  Launch: `legacylens dashboard`
+
+  • **KPIs:** Aggregated health metrics (Avg Energy/Debt/Safety)
+  • **Distributions:** Histograms showing population-wide risk spread
+  • **Module Breakdown:** Per-package debt and risk assessment
+  • **3D Explorer:** Interactive 3D space of all 2903 functions
+
+  ✓ Visual proof of codebase-wide analysis scale
+
 
 ╭──────────────────────────────────────────────────────────────────────────╮
 │  ✅  All 5 capabilities demonstrated successfully.                       │

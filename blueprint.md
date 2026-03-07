@@ -38,6 +38,7 @@
     *   **Finalizer Agent (Temp=0.5):** Polishes for readability.
 5.  **Phase 4: CodeBalance Analysis (3D):**
     *   Scores Energy, Debt, and Safety (0-10 scale).
+    *   **Interactive Analytics:** A business-centric Flask dashboard visualizes population-wide health trends, module hotspots, and 3D risk space exploration.
 6.  **Phase 5: Regeneration Validation:**
     *   Regenerate code from explanation -> Compare with original -> Pass if similarity > 70%.
 

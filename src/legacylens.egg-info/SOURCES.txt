@@ -30,6 +30,8 @@ src/legacylens/parser/java_parser.py
 src/legacylens/parser/python_parser.py
 src/legacylens/retrieval/__init__.py
 src/legacylens/retrieval/retriever.py
+src/legacylens/web/__init__.py
+src/legacylens/web/app.py
 tests/test_analysis_modules.py
 tests/test_critic_bugs.py
 tests/test_e2e_batch.py

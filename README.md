@@ -33,6 +33,8 @@ LegacyLens includes robust tools for analysis and measurement:
 -   **Ablation Runner:** Built-in scripts to test and compare different agent configurations.
 -   **BLEU/ROUGE Scorer:** Pure Python, zero-dependency metric calculation for evaluating explanation quality against references.
 -   **3D CodeBalance Visualization:** Generates dependency-free HTML 3D scatter plots of function CodeBalance scores.
+-   **Interactive Web Dashboard:** A Flask-based business analytics interface providing KPI cards, score distributions (Chart.js), and interactive 3D space exploration (Plotly).
+
 
 ###  3D CodeBalance Score
 Assessing code health scores of every function on three critical axes (0-10 scale):
@@ -165,6 +167,13 @@ Check codebase size and database status.
 legacylens stats
 ```
 
+### 5. Launch Web Dashboard
+Visualize codebase health, risk distributions, and module-level metrics.
+```bash
+legacylens dashboard
+```
+
+
 ---
 
 ##  Project Structure
@@ -174,6 +183,8 @@ legacylens stats
 - `src/legacylens/embeddings/`: CodeBERT vector integration.
 - `src/legacylens/parser/`: Tree-sitter parsers for Java and Python.
 - `src/legacylens/retrieval/`: Hybrid retrieval engine.
+- `src/legacylens/web/`: Flask-based business analytics dashboard and API.
+
 
 ---
 
