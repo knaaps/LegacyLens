@@ -202,6 +202,10 @@ def cmd_explain(args: argparse.Namespace) -> int:
     # Get metadata for display
     meta = rag_results[0]["metadata"]
     
+    # Add a header for the function name
+    func_name = meta.get("name", query)
+    console.rule(f"[bold blue]Function: {func_name}")
+
     # Show the retrieved code
     console.print(Panel(
         f"[bold cyan]{meta['qualified_name']}[/bold cyan]\n"
