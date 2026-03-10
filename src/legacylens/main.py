@@ -1,7 +1,10 @@
 """LegacyLens CLI - Index and query legacy code with multi-agent verification."""
 
 import argparse
+import json
 import sys
+import webbrowser
+import threading
 from pathlib import Path
 
 from rich.console import Console
@@ -150,6 +153,16 @@ def _export_function_data(retriever: CodeRetriever) -> None:
 def cmd_query(args: argparse.Namespace) -> int:
     """Query the indexed codebase."""
     query = args.query
+    fmt = getattr(args, 'format', None)
+    web = getattr(args, 'web', False)
+
+    # --web: open browser search page
+    if web:
+        import urllib.parse
+        url = f'http://127.0.0.1:5000/search?q={urllib.parse.quote(query)}'
+        console.print(f"[bold green]Opening browser:[/bold green] {url}")
+        webbrowser.open(url)
+        return 0
     
     console.print(f"\n[bold]Query:[/bold] {query}\n")
     
@@ -165,6 +178,34 @@ def cmd_query(args: argparse.Namespace) -> int:
     
     if not results:
         console.print("[yellow]No matching code found.[/yellow]")
+        return 0
+
+    # --format json
+    if fmt == 'json':
+        out = []
+        for result in results:
+            meta = result["metadata"]
+            out.append({
+                'name': meta.get('qualified_name', ''),
+                'file': meta.get('file_path', ''),
+                'start_line': meta.get('start_line', 0),
+                'end_line': meta.get('end_line', 0),
+                'similarity': round(1 - result['distance'], 4),
+                'code': result['code'],
+            })
+        print(json.dumps(out, indent=2))
+        return 0
+
+    # --format markdown
+    if fmt == 'markdown':
+        for i, result in enumerate(results, 1):
+            meta = result["metadata"]
+            print(f"## Result {i}: `{meta['qualified_name']}`")
+            print(f"**File:** `{meta['file_path']}:{meta['start_line']}-{meta['end_line']}`")
+            print(f"**Similarity:** {1 - result['distance']:.2%}\n")
+            print(f"```{meta['language']}")
+            print(result['code'])
+            print("```\n")
         return 0
     
     for i, result in enumerate(results, 1):
@@ -234,6 +275,8 @@ def cmd_explain(args: argparse.Namespace) -> int:
     """Explain code using multi-agent verification."""
     global _call_graph
     query = args.query
+    fmt = getattr(args, 'format', None)
+    web = getattr(args, 'web', False)
     
     console.print(f"\n[bold]Explaining:[/bold] {query}\n")
     
@@ -343,6 +386,44 @@ def cmd_explain(args: argparse.Namespace) -> int:
     func_name = meta.get("name", "")
     balance = score_code(code, function_name=func_name)
     
+    # --web: open browser to the function's explain page
+    if web:
+        import urllib.parse
+        url = f'http://127.0.0.1:5000/search?q={urllib.parse.quote(func_name)}'
+        console.print(f"[bold green]Opening browser:[/bold green] {url}")
+        webbrowser.open(url)
+        return 0
+
+    # --format json
+    if fmt == 'json':
+        out = {
+            'function': meta.get('qualified_name', func_name),
+            'file': meta.get('file_path', ''),
+            'start_line': meta.get('start_line', 0),
+            'end_line': meta.get('end_line', 0),
+            'verified': result.verified,
+            'verdict': result.verdict,
+            'iterations': result.iterations,
+            'explanation': result.explanation,
+            'codebalance': {'energy': balance.energy, 'debt': balance.debt, 'safety': balance.safety, 'grade': balance.grade},
+        }
+        print(json.dumps(out, indent=2))
+        return 0
+
+    # --format markdown
+    if fmt == 'markdown':
+        print(f"# Explanation: `{meta.get('qualified_name', func_name)}`")
+        print(f"**File:** `{meta.get('file_path', '')}:{meta.get('start_line', '')}–{meta.get('end_line', '')}`")
+        print(f"**Verified:** {'✓' if result.verified else '⚠'} | **Verdict:** {result.verdict} | **Iterations:** {result.iterations}\n")
+        print(result.explanation)
+        print(f"\n## CodeBalance")
+        print(f"| Axis | Score |\n|------|-------|")
+        print(f"| ⚡ Energy | {balance.energy}/10 |")
+        print(f"| 🔧 Debt | {balance.debt}/10 |")
+        print(f"| 🛡 Safety | {balance.safety}/10 |")
+        print(f"| **Grade** | **{balance.grade}** |")
+        return 0
+
     # Color-code each score (0-3 green, 4-6 yellow, 7-10 red)
     def _color(score: int) -> str:
         if score <= 3:
@@ -414,11 +495,33 @@ def main() -> int:
         choices=["java", "python"],
         help="Filter by language",
     )
+    query_parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Open results in the web dashboard",
+    )
+    query_parser.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default=None,
+        help="Output format (json or markdown)",
+    )
     query_parser.set_defaults(func=cmd_query)
     
     # Explain command
     explain_parser = subparsers.add_parser("explain", help="Explain code using AI")
     explain_parser.add_argument("query", help="What to explain (e.g., 'processFindForm')")
+    explain_parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Open explanation in the web dashboard",
+    )
+    explain_parser.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default=None,
+        help="Output format (json or markdown)",
+    )
     explain_parser.set_defaults(func=cmd_explain)
     
     # Stats command

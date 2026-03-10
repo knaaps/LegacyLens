@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}LegacyLens — Risk Heatmap{% endblock %}
+{% block nav_heatmap %}active{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+<style>
+    .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 14px;
+    }
+
+    .heatmap-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        position: relative;
+    }
+
+    .heatmap-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .heatmap-header h2 {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .heatmap-legend {
+        display: flex;
+        gap: 12px;
+        font-size: 11px;
+        color: var(--text-dim);
+    }
+
+    .heatmap-legend .hl-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+        margin-right: 4px;
+        vertical-align: middle;
+    }
+
+    #treemap-container {
+        width: 100%;
+        height: 520px;
+        position: relative;
+    }
+
+    #treemap-container svg {
+        border-radius: 8px;
+    }
+
+    .treemap-tooltip {
+        position: fixed;
+        pointer-events: none;
+        z-index: 300;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .4);
+        display: none;
+        max-width: 260px;
+    }
+
+    .treemap-tooltip .tt-module {
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 4px;
+    }
+
+    .treemap-tooltip .tt-stat {
+        color: var(--text-dim);
+        font-size: 11px;
+    }
+
+    /* ── Drilldown panel ───────────────────────── */
+    .drilldown-panel {
+        display: none;
+        margin-top: 20px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+    }
+
+    .drilldown-panel.active {
+        display: block;
+    }
+
+    .drilldown-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .drilldown-header h3 {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .drilldown-close {
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .drilldown-close:hover {
+        color: var(--text);
+    }
+
+    table.dd-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+
+    table.dd-table th {
+        text-align: left;
+        padding: 6px 10px;
+        color: var(--text-dim);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+    }
+
+    table.dd-table td {
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+
+    table.dd-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    table.dd-table tr:hover td {
+        background: var(--surface);
+    }
+
+    table.dd-table tr {
+        cursor: pointer;
+    }
+
+    .fn-name {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--accent);
+        font-size: 11px;
+    }
+
+    .score-pill {
+        display: inline-block;
+        font-weight: 700;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
+
+    .pill-red {
+        background: rgba(248, 113, 113, .15);
+        color: var(--danger);
+        border: 1px solid rgba(248, 113, 113, .3);
+    }
+
+    .pill-yellow {
+        background: rgba(251, 191, 36, .12);
+        color: var(--warn);
+        border: 1px solid rgba(251, 191, 36, .3);
+    }
+
+    .pill-green {
+        background: rgba(52, 211, 153, .12);
+        color: var(--safe);
+        border: 1px solid rgba(52, 211, 153, .3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section>
+    <div class="section-title">Module-Level Risk Heatmap</div>
+    <div class="heatmap-card">
+        <div class="heatmap-header">
+            <h2>🔥 Risk Treemap</h2>
+            <div class="heatmap-legend">
+                <span><span class="hl-dot" style="background:#34d399"></span> Low Risk</span>
+                <span><span class="hl-dot" style="background:#fbbf24"></span> Medium Risk</span>
+                <span><span class="hl-dot" style="background:#f87171"></span> High Risk</span>
+            </div>
+        </div>
+        <div id="treemap-container"></div>
+    </div>
+
+    <div class="treemap-tooltip" id="treemap-tooltip">
+        <div class="tt-module" id="tt-module"></div>
+        <div class="tt-stat" id="tt-stat"></div>
+    </div>
+
+    <div class="drilldown-panel" id="drilldown-panel">
+        <div class="drilldown-header">
+            <h3 id="dd-module-name"></h3>
+            <button class="drilldown-close" id="dd-close">&times;</button>
+        </div>
+        <table class="dd-table" id="dd-table">
+            <thead>
+                <tr>
+                    <th>Function</th>
+                    <th>⚡ Energy</th>
+                    <th>🔧 Debt</th>
+                    <th>🛡 Safety</th>
+                </tr>
+            </thead>
+            <tbody id="dd-tbody"></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const { api: _api, $: _$, pillColor: _pillColor, openExplainModal: _openModal, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
+
+    let allFuncs = [];
+
+    function safetyColor(v) {
+        if (v <= 3) return '#34d399';
+        if (v <= 5) return '#6ee7a7';
+        if (v <= 6) return '#fbbf24';
+        if (v <= 7) return '#f97316';
+        return '#f87171';
+    }
+
+    function buildTreemap(moduleSummary) {
+        const container = _$('treemap-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight || 520;
+
+        const data = {
+            name: 'root',
+            children: Object.entries(moduleSummary).map(([name, m]) => ({
+                name,
+                count: m.count,
+                avg_safety: m.avg_safety,
+                avg_energy: m.avg_energy,
+                avg_debt: m.avg_debt,
+            }))
+        };
+
+        const root = d3.hierarchy(data).sum(d => d.count || 0).sort((a, b) => b.value - a.value);
+        d3.treemap().size([width, height]).padding(3).round(true)(root);
+
+        const svg = d3.select('#treemap-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        const tooltip = _$('treemap-tooltip');
+
+        const leaf = svg.selectAll('g')
+            .data(root.leaves())
+            .join('g')
+            .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+        leaf.append('rect')
+            .attr('width', d => d.x1 - d.x0)
+            .attr('height', d => d.y1 - d.y0)
+            .attr('fill', d => safetyColor(d.data.avg_safety))
+            .attr('rx', 4)
+            .attr('opacity', 0.85)
+            .style('cursor', 'pointer')
+            .on('mouseover', function (event, d) {
+                d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 2);
+                _$('tt-module').textContent = d.data.name;
+                _$('tt-stat').innerHTML =
+                    `${d.data.count} functions · Avg Safety: ${d.data.avg_safety}<br>` +
+                    `Avg Energy: ${d.data.avg_energy} · Avg Debt: ${d.data.avg_debt}`;
+                tooltip.style.display = 'block';
+            })
+            .on('mousemove', function (event) {
+                tooltip.style.left = (event.clientX + 12) + 'px';
+                tooltip.style.top = (event.clientY + 12) + 'px';
+            })
+            .on('mouseout', function () {
+                d3.select(this).attr('opacity', 0.85).attr('stroke', 'none');
+                tooltip.style.display = 'none';
+            })
+            .on('click', function (event, d) {
+                showDrilldown(d.data.name);
+            });
+
+        leaf.append('text')
+            .attr('x', 6).attr('y', 16)
+            .text(d => {
+                const w = d.x1 - d.x0;
+                return w > 50 ? d.data.name : '';
+            })
+            .attr('fill', '#0f0f1a')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('font-family', 'Inter, sans-serif')
+            .style('pointer-events', 'none');
+
+        leaf.append('text')
+            .attr('x', 6).attr('y', 30)
+            .text(d => {
+                const w = d.x1 - d.x0;
+                return w > 70 ? `${d.data.count} fns` : '';
+            })
+            .attr('fill', 'rgba(15,15,26,.6)')
+            .attr('font-size', '10px')
+            .attr('font-family', 'Inter, sans-serif')
+            .style('pointer-events', 'none');
+    }
+
+    function showDrilldown(moduleName) {
+        const panel = _$('drilldown-panel');
+        _$('dd-module-name').textContent = moduleName;
+
+        // Find functions belonging to this module
+        const modFuncs = allFuncs.filter(f => {
+            const file = f.file || '';
+            const parts = file.replace(/\\/g, '/').split('/');
+            // Try to match module name against first path segment
+            return parts.some(p => p === moduleName);
+        });
+
+        // Sort by safety descending (risky first)
+        modFuncs.sort((a, b) => (b.safety ?? 0) - (a.safety ?? 0));
+
+        _$('dd-tbody').innerHTML = modFuncs.map(f => {
+            const fname = (f.name || '').split('.').pop();
+            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0;
+            return `<tr data-func="${f.name}">
+                <td><span class="fn-name">${fname}</span></td>
+                <td><span class="score-pill ${_pillColor(e)}">${e}/10</span></td>
+                <td><span class="score-pill ${_pillColor(d)}">${d}/10</span></td>
+                <td><span class="score-pill ${_pillColor(s)}">${s}/10</span></td>
+            </tr>`;
+        }).join('');
+
+        panel.classList.add('active');
+    }
+
+    _$('dd-close').addEventListener('click', () => _$('drilldown-panel').classList.remove('active'));
+
+    _$('dd-tbody').addEventListener('click', e => {
+        const row = e.target.closest('tr[data-func]');
+        if (row) _openModal(row.dataset.func);
+    });
+
+    async function init() {
+        try {
+            await _loadFns();
+            allFuncs = await _api('/api/functions');
+            const summary = await _api('/api/summary');
+            if (summary.error) throw new Error(summary.error);
+
+            buildTreemap(summary.module_summary);
+
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            await _initNav();
+        } catch (err) {
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            const banner = _$('error-banner');
+            banner.style.display = 'block';
+            banner.textContent = '⚠ ' + err.message;
+        }
+    }
+
+    init();
+</script>
+{% endblock %}

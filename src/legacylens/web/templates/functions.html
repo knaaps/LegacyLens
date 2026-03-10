@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}LegacyLens — All Functions{% endblock %}
+{% block nav_functions %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 14px;
+    }
+
+    /* ── filter bar ──────────────────────────────────── */
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .filter-bar label {
+        font-size: 11px;
+        color: var(--text-dim);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+
+    .filter-bar input[type="number"],
+    .filter-bar select {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 5px 10px;
+        font-size: 12px;
+        font-family: inherit;
+        outline: none;
+        width: 70px;
+    }
+
+    .filter-bar input[type="number"]:focus,
+    .filter-bar select:focus {
+        border-color: var(--accent);
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px;
+    }
+
+    .filter-bar .reset-btn {
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-dim);
+        padding: 5px 12px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all .15s;
+    }
+
+    .filter-bar .reset-btn:hover {
+        border-color: var(--accent);
+        color: var(--text);
+    }
+
+    .func-count {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--text-dim);
+    }
+
+    /* ── function table ──────────────────────────────── */
+    .func-table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 4px 0;
+        overflow: hidden;
+    }
+
+    table.func-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+
+    table.func-table th {
+        text-align: left;
+        padding: 10px 14px;
+        color: var(--text-dim);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        user-select: none;
+        transition: color .15s;
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 2;
+    }
+
+    table.func-table th:hover {
+        color: var(--accent);
+    }
+
+    table.func-table th .sort-arrow {
+        margin-left: 4px;
+        font-size: 9px;
+    }
+
+    table.func-table td {
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+
+    table.func-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    table.func-table tr {
+        cursor: pointer;
+        transition: background .1s;
+    }
+
+    table.func-table tr:hover td {
+        background: var(--surface2);
+    }
+
+    .fn-name {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--accent);
+        font-size: 11px;
+    }
+
+    .fn-file {
+        color: var(--text-dim);
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+
+    .score-cell {
+        font-weight: 700;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        min-width: 36px;
+        text-align: center;
+    }
+
+    .cell-green {
+        background: rgba(52, 211, 153, .12);
+        color: var(--safe);
+    }
+
+    .cell-yellow {
+        background: rgba(251, 191, 36, .1);
+        color: var(--warn);
+    }
+
+    .cell-red {
+        background: rgba(248, 113, 113, .12);
+        color: var(--danger);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section>
+    <div class="section-title">All Indexed Functions</div>
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Energy</label>
+            <input type="number" id="f-energy-min" placeholder="min" min="0" max="10" step="1">
+            <span style="color:var(--text-dim)">–</span>
+            <input type="number" id="f-energy-max" placeholder="max" min="0" max="10" step="1">
+        </div>
+        <div class="filter-group">
+            <label>Debt</label>
+            <input type="number" id="f-debt-min" placeholder="min" min="0" max="10" step="1">
+            <span style="color:var(--text-dim)">–</span>
+            <input type="number" id="f-debt-max" placeholder="max" min="0" max="10" step="1">
+        </div>
+        <div class="filter-group">
+            <label>Safety</label>
+            <input type="number" id="f-safety-min" placeholder="min" min="0" max="10" step="1">
+            <span style="color:var(--text-dim)">–</span>
+            <input type="number" id="f-safety-max" placeholder="max" min="0" max="10" step="1">
+        </div>
+        <button class="reset-btn" id="filter-reset">Reset</button>
+        <span class="func-count" id="func-count"></span>
+    </div>
+
+    <div class="func-table-card">
+        <table class="func-table" id="func-table">
+            <thead>
+                <tr>
+                    <th data-col="name">Name <span class="sort-arrow"></span></th>
+                    <th data-col="file">File <span class="sort-arrow"></span></th>
+                    <th data-col="energy">⚡ Energy <span class="sort-arrow"></span></th>
+                    <th data-col="debt">🔧 Debt <span class="sort-arrow"></span></th>
+                    <th data-col="safety">🛡 Safety <span class="sort-arrow"></span></th>
+                    <th data-col="loc">LOC <span class="sort-arrow"></span></th>
+                </tr>
+            </thead>
+            <tbody id="func-tbody"></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const { api: _api, $: _$, openExplainModal: _openModal, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
+
+    let allFuncs = [];
+    let sortCol = 'safety';
+    let sortDir = 'desc';
+
+    function cellClass(v) {
+        if (v === null || v === undefined) return '';
+        return v > 7 ? 'cell-red' : v > 4 ? 'cell-yellow' : 'cell-green';
+    }
+
+    function getFilters() {
+        return {
+            energyMin: parseFloat(_$('f-energy-min').value) || 0,
+            energyMax: parseFloat(_$('f-energy-max').value) || 10,
+            debtMin: parseFloat(_$('f-debt-min').value) || 0,
+            debtMax: parseFloat(_$('f-debt-max').value) || 10,
+            safetyMin: parseFloat(_$('f-safety-min').value) || 0,
+            safetyMax: parseFloat(_$('f-safety-max').value) || 10,
+        };
+    }
+
+    function renderTable() {
+        const filters = getFilters();
+        let filtered = allFuncs.filter(f => {
+            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0;
+            return e >= filters.energyMin && e <= filters.energyMax
+                && d >= filters.debtMin && d <= filters.debtMax
+                && s >= filters.safetyMin && s <= filters.safetyMax;
+        });
+
+        // Sort
+        filtered.sort((a, b) => {
+            let va, vb;
+            if (sortCol === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+            else if (sortCol === 'file') { va = (a.file || '').toLowerCase(); vb = (b.file || '').toLowerCase(); }
+            else if (sortCol === 'loc') { va = (a.line_end || 0) - (a.line_start || 0); vb = (b.line_end || 0) - (b.line_start || 0); }
+            else { va = a[sortCol] ?? 0; vb = b[sortCol] ?? 0; }
+            if (va < vb) return sortDir === 'asc' ? -1 : 1;
+            if (va > vb) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        _$('func-count').textContent = `${filtered.length} of ${allFuncs.length} functions`;
+
+        // Update sort arrows
+        document.querySelectorAll('#func-table th').forEach(th => {
+            const arrow = th.querySelector('.sort-arrow');
+            if (th.dataset.col === sortCol) {
+                arrow.textContent = sortDir === 'asc' ? '▲' : '▼';
+            } else {
+                arrow.textContent = '';
+            }
+        });
+
+        const tbody = _$('func-tbody');
+        tbody.innerHTML = filtered.map(f => {
+            const fname = (f.name || '').split('.').pop();
+            const ffile = (f.file || '').split('/').slice(-2).join('/');
+            const loc = (f.line_end || 0) - (f.line_start || 0);
+            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0;
+            return `<tr data-func="${f.name}">
+                <td><span class="fn-name">${fname}</span></td>
+                <td><span class="fn-file" title="${f.file}">…/${ffile}</span></td>
+                <td><span class="score-cell ${cellClass(e)}">${e}</span></td>
+                <td><span class="score-cell ${cellClass(d)}">${d}</span></td>
+                <td><span class="score-cell ${cellClass(s)}">${s}</span></td>
+                <td style="color:var(--text-dim)">${loc}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Sort on header click
+    document.querySelectorAll('#func-table th').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            else { sortCol = col; sortDir = 'desc'; }
+            renderTable();
+        });
+    });
+
+    // Filter inputs
+    document.querySelectorAll('.filter-bar input[type="number"]').forEach(inp => {
+        inp.addEventListener('input', renderTable);
+    });
+
+    _$('filter-reset').addEventListener('click', () => {
+        document.querySelectorAll('.filter-bar input[type="number"]').forEach(inp => inp.value = '');
+        renderTable();
+    });
+
+    // Row click → modal
+    _$('func-tbody').addEventListener('click', e => {
+        const row = e.target.closest('tr[data-func]');
+        if (row) _openModal(row.dataset.func);
+    });
+
+    // Init
+    async function init() {
+        try {
+            await _loadFns();
+            allFuncs = await _api('/api/functions');
+            renderTable();
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            await _initNav();
+        } catch (err) {
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            const banner = _$('error-banner');
+            banner.style.display = 'block';
+            banner.textContent = '⚠ ' + err.message;
+        }
+    }
+
+    init();
+</script>
+{% endblock %}

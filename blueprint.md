@@ -36,9 +36,12 @@
     *   **Writer Agent (Temp=0.3):** Drafts explanation.
     *   **Compositional Critic (Temp=0.0):** Verifies sub-properties (Factual Accuracy, Completeness, Risk Awareness).
     *   **Finalizer Agent (Temp=0.5):** Polishes for readability.
-5.  **Phase 4: CodeBalance Analysis (3D):**
+5.  **Phase 4: CodeBalance Analysis & Drilldown:**
     *   Scores Energy, Debt, and Safety (0-10 scale).
-    *   **Interactive Analytics:** A business-centric Flask dashboard visualizes population-wide health trends, module hotspots, and 3D risk space exploration.
+    *   **Interactive Analytics (v0.2.0-web-preview):** A business-centric Flask dashboard visualizes population-wide health trends.
+    -   **Hotspot Analysis:** Module-level treemaps (d3.js) sized by function count and colored by avg Safety.
+    -   **Drilldown:** Instant transition from module summary to function list and deep-dive explanations.
+    -   **3D Hero:** Plotly-powered 3D scatter plot for global risk exploration.
 6.  **Phase 5: Regeneration Validation:**
     *   Regenerate code from explanation -> Compare with original -> Pass if similarity > 70%.
 

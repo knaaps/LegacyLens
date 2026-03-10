@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}LegacyLens — Search{% endblock %}
+
+{% block extra_head %}
+<style>
+    .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 14px;
+    }
+
+    .search-page-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .search-page-bar input {
+        flex: 1;
+        padding: 10px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+    }
+
+    .search-page-bar input:focus {
+        border-color: var(--accent);
+    }
+
+    .search-page-bar button {
+        padding: 10px 20px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: opacity .15s;
+    }
+
+    .search-page-bar button:hover {
+        opacity: .85;
+    }
+
+    /* ── Split view ──────────────────────────────────── */
+    .split-view {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        min-height: 500px;
+    }
+
+    @media (max-width: 900px) {
+        .split-view {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .split-left,
+    .split-right {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        overflow-y: auto;
+        max-height: 70vh;
+    }
+
+    .result-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: background .1s;
+    }
+
+    .result-item:last-child {
+        border-bottom: none;
+    }
+
+    .result-item:hover,
+    .result-item.active {
+        background: var(--surface2);
+    }
+
+    .result-item .ri-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: var(--accent);
+        margin-bottom: 2px;
+    }
+
+    .result-item .ri-file {
+        font-size: 11px;
+        color: var(--text-dim);
+    }
+
+    .result-item .ri-scores {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .ri-pill {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 10px;
+    }
+
+    .no-results {
+        color: var(--text-dim);
+        text-align: center;
+        padding: 40px;
+        font-size: 13px;
+    }
+
+    /* ── explanation pane ─────────────────────────────── */
+    .explain-pane-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 4px;
+    }
+
+    .explain-pane-file {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-bottom: 14px;
+    }
+
+    .explain-scores {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .explain-score-card {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .explain-score-card .esc-label {
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-bottom: 2px;
+    }
+
+    .explain-score-card .esc-value {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .explain-section {
+        margin-bottom: 12px;
+    }
+
+    .explain-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .explain-section-title .chevron {
+        transition: transform .15s;
+        font-size: 10px;
+    }
+
+    .explain-section-title .chevron.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .explain-section-body {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text);
+    }
+
+    .explain-section-body.collapsed {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section>
+    <div class="section-title">Search Results</div>
+    <div class="search-page-bar">
+        <input type="text" id="search-input" placeholder="Search functions, files…" autocomplete="off" />
+        <button id="search-btn">Search</button>
+    </div>
+
+    <div class="split-view">
+        <div class="split-left" id="result-list">
+            <div class="no-results">Enter a search query above</div>
+        </div>
+        <div class="split-right" id="explain-pane">
+            <div class="no-results">Select a result to view details</div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const { api: _api, $: _$, pillColor: _pillColor, scoreColor: _scoreColor, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
+
+    let allFuncs = [];
+    let currentResults = [];
+
+    function runSearch(query) {
+        if (!query || query.length < 1) { currentResults = []; renderResults(); return; }
+        const q = query.toLowerCase();
+        currentResults = allFuncs.filter(f =>
+            (f.name || '').toLowerCase().includes(q) ||
+            (f.file || '').toLowerCase().includes(q) ||
+            (f.explanation || '').toLowerCase().includes(q) ||
+            (f.verified_explanation || '').toLowerCase().includes(q)
+        );
+        renderResults();
+    }
+
+    function renderResults() {
+        const list = _$('result-list');
+        if (!currentResults.length) {
+            list.innerHTML = '<div class="no-results">No results found</div>';
+            return;
+        }
+        list.innerHTML = currentResults.map((f, i) => {
+            const fname = (f.name || '').split('.').pop();
+            const ffile = (f.file || '').split('/').slice(-2).join('/');
+            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0;
+            return `<div class="result-item" data-idx="${i}">
+                <div class="ri-name">${fname}</div>
+                <div class="ri-file">…/${ffile}</div>
+                <div class="ri-scores">
+                    <span class="ri-pill ${_pillColor(e)}">⚡${e}</span>
+                    <span class="ri-pill ${_pillColor(d)}">🔧${d}</span>
+                    <span class="ri-pill ${_pillColor(s)}">🛡${s}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function showExplanation(func) {
+        const pane = _$('explain-pane');
+        const e = func.energy ?? 0, d = func.debt ?? 0, s = func.safety ?? 0;
+        const explanation = func.explanation || func.verified_explanation || '';
+
+        const sections = [
+            { title: 'Purpose', body: _extractSection(explanation, 'Purpose') || 'N/A' },
+            { title: 'Parameters', body: _extractSection(explanation, 'Parameters') || 'N/A' },
+            { title: 'Returns', body: _extractSection(explanation, 'Returns') || 'N/A' },
+            { title: 'Side Effects', body: _extractSection(explanation, 'Side Effects') || 'N/A' },
+            { title: 'Risks', body: _extractSection(explanation, 'Risks') || 'N/A' },
+            { title: 'CodeBalance', body: `Energy: ${e}/10 · Debt: ${d}/10 · Safety: ${s}/10` },
+        ];
+
+        pane.innerHTML = `
+            <div class="explain-pane-title">${func.name}</div>
+            <div class="explain-pane-file">${func.file || ''}</div>
+            <div class="explain-scores">
+                <div class="explain-score-card"><div class="esc-label">⚡ Energy</div>
+                    <div class="esc-value" style="color:${_scoreColor(e)}">${e}/10</div></div>
+                <div class="explain-score-card"><div class="esc-label">🔧 Debt</div>
+                    <div class="esc-value" style="color:${_scoreColor(d)}">${d}/10</div></div>
+                <div class="explain-score-card"><div class="esc-label">🛡 Safety</div>
+                    <div class="esc-value" style="color:${_scoreColor(s)}">${s}/10</div></div>
+            </div>
+            ${sections.map(sec => `
+                <div class="explain-section">
+                    <div class="explain-section-title" onclick="this.querySelector('.chevron').classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')">
+                        <span class="chevron">▼</span> ${sec.title}
+                    </div>
+                    <div class="explain-section-body">${_escapeHtml(sec.body)}</div>
+                </div>`).join('')}`;
+    }
+
+    function _extractSection(text, heading) {
+        const re = new RegExp(`(?:^|\\n)\\*?\\*?${heading}[:\\*]*\\s*\\n?([\\s\\S]*?)(?=\\n\\*?\\*?[A-Z][a-z]+[:\\*]|$)`, 'i');
+        const m = text.match(re);
+        return m ? m[1].trim() : '';
+    }
+
+    function _escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    }
+
+    // Event handlers
+    _$('search-btn').addEventListener('click', () => runSearch(_$('search-input').value));
+    _$('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(e.target.value); });
+
+    _$('result-list').addEventListener('click', e => {
+        const item = e.target.closest('.result-item');
+        if (!item) return;
+        document.querySelectorAll('.result-item').forEach(r => r.classList.remove('active'));
+        item.classList.add('active');
+        const idx = parseInt(item.dataset.idx);
+        if (currentResults[idx]) showExplanation(currentResults[idx]);
+    });
+
+    // Init with query param
+    async function init() {
+        try {
+            await _loadFns();
+            allFuncs = await _api('/api/functions');
+            const urlQ = new URLSearchParams(window.location.search).get('q');
+            if (urlQ) {
+                _$('search-input').value = urlQ;
+                runSearch(urlQ);
+            }
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            await _initNav();
+        } catch (err) {
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            const banner = _$('error-banner');
+            banner.style.display = 'block';
+            banner.textContent = '⚠ ' + err.message;
+        }
+    }
+
+    init();
+</script>
+{% endblock %}

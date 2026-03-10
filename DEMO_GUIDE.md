@@ -158,20 +158,32 @@ Two functions are scored side-by-side so the audience can compare code health:
   ✓ Comparative view reveals relative code health
 
 ─────────────────────────── STEP 6 ────────────────────────────
-  Web Dashboard  (Flask + Analytics)
+  Web Dashboard (v0.2.0-web-preview)
 
   Launch: `legacylens dashboard`
 
-  • **KPIs:** Aggregated health metrics (Avg Energy/Debt/Safety)
-  • **Distributions:** Histograms showing population-wide risk spread
-  • **Module Breakdown:** Per-package debt and risk assessment
-  • **3D Explorer:** Interactive 3D space of all 2903 functions
+  • **3D Hero Explorer:** Interactive Plotly/d3.js scatter plot with Safety safety color-coding and click-to-explain interactions.
+  • **Risk Heatmap:** Module-level treemaps sized by function count and colored by average risk with instant drilldown.
+  • **Function Matrix:** Sortable, color-coded table of all indexed methods for deep exploration.
+  • **Omni-Search:** Persistent navigation search with autocomplete and split-view explanation results.
 
-  ✓ Visual proof of codebase-wide analysis scale
+  ✓ Industry-grade visual analytics for legacy comprehension.
 
+## CLI Expert Flags
+
+Leverage the bridge between terminal and web for power workflows:
+
+```bash
+# Direct navigation to a function in the dashboard
+legacylens explain "processFindForm" --web
+
+# Structured analysis for CI/CD or automation
+legacylens explain "processFindForm" --format json
+legacylens query "all controller methods" --format markdown
+```
 
 ╭──────────────────────────────────────────────────────────────────────────╮
-│  ✅  All 5 capabilities demonstrated successfully.                       │
+│  ✅  All capabilities demonstrated successfully.                         │
 ╰──────────────────────────────────────────────────────────────────────────╯
 ```
 

@@ -1,809 +1,642 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LegacyLens — Codebase Health Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
-        rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <style>
-        /* ── reset & tokens ──────────────────────────────── */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+{% block title %}LegacyLens — Codebase Health Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
 
-        :root {
-            --bg: #0f0f1a;
-            --surface: #181825;
-            --surface2: #1e1e2e;
-            --border: #313244;
-            --accent: #7c6af7;
-            --accent2: #56d4a0;
-            --danger: #f87171;
-            --warn: #fbbf24;
-            --safe: #34d399;
-            --text: #cdd6f4;
-            --text-dim: #6c7086;
-            --radius: 10px;
-        }
+{% block extra_head %}
+<style>
+    /* ── section headings ────────────────────────────── */
+    .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 14px;
+    }
 
-        html,
-        body {
-            height: 100%;
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', system-ui, sans-serif;
-            font-size: 14px;
-        }
+    /* ── KPI cards ───────────────────────────────────── */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px;
+    }
 
-        a {
-            color: var(--accent);
-            text-decoration: none;
-        }
+    .kpi-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        position: relative;
+        overflow: hidden;
+        transition: border-color .2s;
+    }
 
-        /* ── layout ──────────────────────────────────────── */
-        #app {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+    .kpi-card:hover {
+        border-color: var(--accent);
+    }
 
-        header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 28px;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+    }
 
-        header .brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .kpi-card.kpi-neutral::before {
+        background: var(--accent);
+    }
 
-        header .logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--accent);
-            letter-spacing: -.3px;
-        }
+    .kpi-card.kpi-energy::before {
+        background: var(--danger);
+    }
 
-        header .logo span {
-            color: var(--text);
-        }
+    .kpi-card.kpi-debt::before {
+        background: var(--warn);
+    }
 
-        header .badge {
-            background: linear-gradient(135deg, var(--accent), #a78bfa);
-            color: #fff;
-            font-size: 10px;
-            font-weight: 700;
-            border-radius: 20px;
-            padding: 3px 10px;
-            letter-spacing: .5px;
-        }
+    .kpi-card.kpi-safety::before {
+        background: var(--safe);
+    }
 
-        header .meta {
-            font-size: 12px;
-            color: var(--text-dim);
-            text-align: right;
-        }
+    .kpi-card.kpi-risk::before {
+        background: linear-gradient(90deg, var(--danger), var(--warn));
+    }
 
-        header .meta strong {
-            color: var(--text);
-        }
+    .kpi-label {
+        font-size: 11px;
+        color: var(--text-dim);
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
 
-        main {
-            flex: 1;
-            padding: 24px 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
+    .kpi-value {
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1;
+    }
 
-        /* ── loading overlay ─────────────────────────────── */
-        #loading {
-            position: fixed;
-            inset: 0;
-            background: var(--bg);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            z-index: 999;
-        }
+    .kpi-value.energy-color {
+        color: var(--danger);
+    }
 
-        #loading .spinner {
-            width: 36px;
-            height: 36px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin .7s linear infinite;
-        }
+    .kpi-value.debt-color {
+        color: var(--warn);
+    }
 
-        #loading p {
-            color: var(--text-dim);
-            font-size: 13px;
-        }
+    .kpi-value.safety-color {
+        color: var(--safe);
+    }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+    .kpi-value.risk-color {
+        color: var(--danger);
+    }
 
-        /* ── error banner ────────────────────────────────── */
-        #error-banner {
-            display: none;
-            background: #2d1230;
-            border: 1px solid var(--danger);
-            border-radius: var(--radius);
-            padding: 16px 20px;
-            color: var(--danger);
-            font-size: 13px;
-        }
+    .kpi-sub {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-top: 6px;
+    }
 
-        /* ── section headings ────────────────────────────── */
-        .section-title {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            margin-bottom: 14px;
-        }
+    .kpi-icon {
+        position: absolute;
+        bottom: 12px;
+        right: 14px;
+        font-size: 28px;
+        opacity: .08;
+    }
 
-        /* ── KPI cards ───────────────────────────────────── */
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 14px;
-        }
+    /* ── charts row ──────────────────────────────────── */
+    .charts-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+    }
 
-        .kpi-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px 20px;
-            position: relative;
-            overflow: hidden;
-            transition: border-color .2s;
-        }
-
-        .kpi-card:hover {
-            border-color: var(--accent);
-        }
-
-        .kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-        }
-
-        .kpi-card.kpi-neutral::before {
-            background: var(--accent);
-        }
-
-        .kpi-card.kpi-energy::before {
-            background: var(--danger);
-        }
-
-        .kpi-card.kpi-debt::before {
-            background: var(--warn);
-        }
-
-        .kpi-card.kpi-safety::before {
-            background: var(--safe);
-        }
-
-        .kpi-card.kpi-risk::before {
-            background: linear-gradient(90deg, var(--danger), var(--warn));
-        }
-
-        .kpi-label {
-            font-size: 11px;
-            color: var(--text-dim);
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-
-        .kpi-value {
-            font-size: 30px;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        .kpi-value.energy-color {
-            color: var(--danger);
-        }
-
-        .kpi-value.debt-color {
-            color: var(--warn);
-        }
-
-        .kpi-value.safety-color {
-            color: var(--safe);
-        }
-
-        .kpi-value.risk-color {
-            color: var(--danger);
-        }
-
-        .kpi-sub {
-            font-size: 11px;
-            color: var(--text-dim);
-            margin-top: 6px;
-        }
-
-        .kpi-icon {
-            position: absolute;
-            bottom: 12px;
-            right: 14px;
-            font-size: 28px;
-            opacity: .08;
-        }
-
-        /* ── charts row ──────────────────────────────────── */
+    @media (max-width: 1100px) {
         .charts-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 14px;
+            grid-template-columns: 1fr 1fr;
         }
+    }
 
-        @media (max-width: 1100px) {
-            .charts-row {
-                grid-template-columns: 1fr 1fr;
-            }
+    @media (max-width: 700px) {
+        .charts-row {
+            grid-template-columns: 1fr;
         }
+    }
 
-        @media (max-width: 700px) {
-            .charts-row {
-                grid-template-columns: 1fr;
-            }
-        }
+    .chart-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+    }
 
-        .chart-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px 20px;
-        }
+    .chart-card-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .chart-card-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .chart-card-title .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
 
-        .chart-card-title .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
+    .chart-wrap {
+        height: 180px;
+    }
 
-        .chart-wrap {
-            height: 180px;
-        }
+    /* ── 3D scatter hero ────────────────────────────── */
+    .scatter-hero {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        position: relative;
+    }
 
-        /* ── 3D scatter ──────────────────────────────────── */
-        .scatter-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px 20px;
-        }
+    .scatter-hero-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
 
-        #plotly-scatter {
-            height: 420px;
-        }
+    .scatter-hero-header h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
 
-        /* ── module heatmap table ─────────────────────────── */
-        .module-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px 20px;
-        }
+    .scatter-hero-header .scatter-legend {
+        display: flex;
+        gap: 14px;
+        font-size: 11px;
+        color: var(--text-dim);
+    }
 
-        /* ── risk tables ─────────────────────────────────── */
-        .tables-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 14px;
-        }
+    .scatter-hero-header .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 4px;
+        vertical-align: middle;
+    }
 
-        .table-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px 20px;
-        }
+    #plotly-scatter {
+        height: 480px;
+    }
 
-        .table-card-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    /* ── module heatmap table ─────────────────────────── */
+    .module-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+    }
 
-        table.risk-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
+    /* ── risk tables ─────────────────────────────────── */
+    .tables-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 14px;
+    }
 
-        table.risk-table th {
-            text-align: left;
-            padding: 6px 10px;
-            color: var(--text-dim);
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .5px;
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
-        }
+    .table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+    }
 
-        table.risk-table td {
-            padding: 7px 10px;
-            border-bottom: 1px solid var(--border);
-            vertical-align: middle;
-        }
+    .table-card-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        table.risk-table tr:last-child td {
-            border-bottom: none;
-        }
+    table.risk-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
 
-        table.risk-table tr:hover td {
-            background: #1e1e2e;
-        }
+    table.risk-table th {
+        text-align: left;
+        padding: 6px 10px;
+        color: var(--text-dim);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+    }
 
-        .fn-name {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent);
-            font-size: 11px;
-        }
+    table.risk-table td {
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
 
-        .fn-file {
-            color: var(--text-dim);
-            font-size: 10px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 160px;
-        }
+    table.risk-table tr:last-child td {
+        border-bottom: none;
+    }
 
-        .score-pill {
-            display: inline-block;
-            font-weight: 700;
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 20px;
-        }
+    table.risk-table tr:hover td {
+        background: #1e1e2e;
+    }
 
-        .pill-red {
-            background: rgba(248, 113, 113, .15);
-            color: var(--danger);
-            border: 1px solid rgba(248, 113, 113, .3);
-        }
+    .fn-name {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--accent);
+        font-size: 11px;
+        cursor: pointer;
+    }
 
-        .pill-yellow {
-            background: rgba(251, 191, 36, .12);
-            color: var(--warn);
-            border: 1px solid rgba(251, 191, 36, .3);
-        }
+    .fn-name:hover {
+        text-decoration: underline;
+    }
 
-        .pill-green {
-            background: rgba(52, 211, 153, .12);
-            color: var(--safe);
-            border: 1px solid rgba(52, 211, 153, .3);
-        }
+    .fn-file {
+        color: var(--text-dim);
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 160px;
+    }
 
-        /* ── sparkbar ─────────────────────────────────────── */
-        .sparkbar {
-            display: flex;
-            gap: 2px;
-            align-items: flex-end;
-            height: 18px;
-        }
+    /* ── sparkbar ─────────────────────────────────────── */
+    .sparkbar {
+        display: flex;
+        gap: 2px;
+        align-items: flex-end;
+        height: 18px;
+    }
 
-        .sparkbar-fill {
-            border-radius: 2px 2px 0 0;
-            transition: opacity .2s;
-            min-width: 5px;
-            flex: 1;
-        }
+    .sparkbar-fill {
+        border-radius: 2px 2px 0 0;
+        transition: opacity .2s;
+        min-width: 5px;
+        flex: 1;
+    }
 
-        .sparkbar-fill:hover {
-            opacity: .7;
-        }
+    .sparkbar-fill:hover {
+        opacity: .7;
+    }
+</style>
+{% endblock %}
 
-        /* ── footer ──────────────────────────────────────── */
-        footer {
-            text-align: center;
-            padding: 14px;
-            font-size: 11px;
-            color: var(--text-dim);
-            border-top: 1px solid var(--border);
-        }
-    </style>
-</head>
-
-<body>
-
-    <div id="loading">
-        <div class="spinner"></div>
-        <p>Loading codebase analysis…</p>
+{% block content %}
+<!-- ── KPI Cards ──────────────────────────────────── -->
+<section>
+    <div class="section-title">Overview</div>
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-neutral">
+            <div class="kpi-label">Functions Analysed</div>
+            <div class="kpi-value" id="kpi-total">–</div>
+            <div class="kpi-sub" id="kpi-files">–</div>
+            <div class="kpi-icon">ƒ</div>
+        </div>
+        <div class="kpi-card kpi-energy">
+            <div class="kpi-label">⚡ Avg Energy Score</div>
+            <div class="kpi-value energy-color" id="kpi-energy">–</div>
+            <div class="kpi-sub">Complexity / Performance stress</div>
+            <div class="kpi-icon">⚡</div>
+        </div>
+        <div class="kpi-card kpi-debt">
+            <div class="kpi-label">🔧 Avg Technical Debt</div>
+            <div class="kpi-value debt-color" id="kpi-debt">–</div>
+            <div class="kpi-sub">Code maintainability burden</div>
+            <div class="kpi-icon">🔧</div>
+        </div>
+        <div class="kpi-card kpi-safety">
+            <div class="kpi-label">🛡 Avg Safety Score</div>
+            <div class="kpi-value safety-color" id="kpi-safety">–</div>
+            <div class="kpi-sub">Validation & input risk</div>
+            <div class="kpi-icon">🛡</div>
+        </div>
+        <div class="kpi-card kpi-risk">
+            <div class="kpi-label">🔥 High-Risk Functions</div>
+            <div class="kpi-value risk-color" id="kpi-risk">–</div>
+            <div class="kpi-sub" id="kpi-risky-files">–</div>
+            <div class="kpi-icon">🔥</div>
+        </div>
     </div>
+</section>
 
-    <div id="app" style="display:none">
-
-        <!-- ── Header ─────────────────────────────────────── -->
-        <header>
-            <div class="brand">
-                <span class="logo">Legacy<span>Lens</span></span>
-                <span class="badge">Health Dashboard</span>
+<!-- ── 3D CodeBalance Scatter (HERO) ─────────────── -->
+<section>
+    <div class="scatter-hero">
+        <div class="scatter-hero-header">
+            <h2>🌐 3D CodeBalance Space</h2>
+            <div class="scatter-legend">
+                <span><span class="legend-dot" style="background:var(--safe)"></span> Safe (0-3)</span>
+                <span><span class="legend-dot" style="background:var(--warn)"></span> Medium (4-6)</span>
+                <span><span class="legend-dot" style="background:var(--danger)"></span> Risky (7-10)</span>
             </div>
-            <div class="meta">
-                <div id="repo-label" style="margin-bottom:2px">Loading…</div>
-                <div id="analysis-date"></div>
-            </div>
-        </header>
-
-        <main>
-            <div id="error-banner"></div>
-
-            <!-- ── KPI Cards ──────────────────────────────────── -->
-            <section>
-                <div class="section-title">Overview</div>
-                <div class="kpi-grid">
-                    <div class="kpi-card kpi-neutral">
-                        <div class="kpi-label">Functions Analysed</div>
-                        <div class="kpi-value" id="kpi-total">–</div>
-                        <div class="kpi-sub" id="kpi-files">–</div>
-                        <div class="kpi-icon">ƒ</div>
-                    </div>
-                    <div class="kpi-card kpi-energy">
-                        <div class="kpi-label">⚡ Avg Energy Score</div>
-                        <div class="kpi-value energy-color" id="kpi-energy">–</div>
-                        <div class="kpi-sub">Complexity / Performance stress</div>
-                        <div class="kpi-icon">⚡</div>
-                    </div>
-                    <div class="kpi-card kpi-debt">
-                        <div class="kpi-label">🔧 Avg Technical Debt</div>
-                        <div class="kpi-value debt-color" id="kpi-debt">–</div>
-                        <div class="kpi-sub">Code maintainability burden</div>
-                        <div class="kpi-icon">🔧</div>
-                    </div>
-                    <div class="kpi-card kpi-safety">
-                        <div class="kpi-label">🛡 Avg Safety Score</div>
-                        <div class="kpi-value safety-color" id="kpi-safety">–</div>
-                        <div class="kpi-sub">Validation & input risk</div>
-                        <div class="kpi-icon">🛡</div>
-                    </div>
-                    <div class="kpi-card kpi-risk">
-                        <div class="kpi-label">🔥 High-Risk Functions</div>
-                        <div class="kpi-value risk-color" id="kpi-risk">–</div>
-                        <div class="kpi-sub" id="kpi-risky-files">–</div>
-                        <div class="kpi-icon">🔥</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ── Distribution Charts ────────────────────────── -->
-            <section>
-                <div class="section-title">Score Distribution</div>
-                <div class="charts-row">
-                    <div class="chart-card">
-                        <div class="chart-card-title">
-                            <span class="dot" style="background:var(--danger)"></span>
-                            Energy Distribution
-                        </div>
-                        <div class="chart-wrap"><canvas id="chart-energy"></canvas></div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-card-title">
-                            <span class="dot" style="background:var(--warn)"></span>
-                            Debt Distribution
-                        </div>
-                        <div class="chart-wrap"><canvas id="chart-debt"></canvas></div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-card-title">
-                            <span class="dot" style="background:var(--safe)"></span>
-                            Safety Distribution
-                        </div>
-                        <div class="chart-wrap"><canvas id="chart-safety"></canvas></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ── Module Heatmap ─────────────────────────────── -->
-            <section>
-                <div class="section-title">Module Health Breakdown</div>
-                <div class="module-card">
-                    <table class="risk-table" id="module-table">
-                        <thead>
-                            <tr>
-                                <th>Module</th>
-                                <th>Functions</th>
-                                <th>⚡ Energy</th>
-                                <th>🔧 Debt</th>
-                                <th>🛡 Safety</th>
-                                <th>Risk Profile</th>
-                            </tr>
-                        </thead>
-                        <tbody id="module-tbody"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- ── 3D Scatter ─────────────────────────────────── -->
-            <section>
-                <div class="section-title">3D CodeBalance Space</div>
-                <div class="scatter-card">
-                    <div id="plotly-scatter"></div>
-                </div>
-            </section>
-
-            <!-- ── Top Risk Tables ────────────────────────────── -->
-            <section>
-                <div class="section-title">Functions Requiring Attention</div>
-                <div class="tables-row">
-                    <div class="table-card">
-                        <div class="table-card-title">
-                            <span style="color:var(--danger)">⚡</span> Highest Energy (Complexity)
-                        </div>
-                        <table class="risk-table" id="table-energy">
-                            <thead>
-                                <tr>
-                                    <th>Function</th>
-                                    <th>File</th>
-                                    <th>Score</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div class="table-card">
-                        <div class="table-card-title">
-                            <span style="color:var(--warn)">🔧</span> Highest Technical Debt
-                        </div>
-                        <table class="risk-table" id="table-debt">
-                            <thead>
-                                <tr>
-                                    <th>Function</th>
-                                    <th>File</th>
-                                    <th>Score</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div class="table-card">
-                        <div class="table-card-title">
-                            <span style="color:var(--safe)">🛡</span> Highest Safety Risk
-                        </div>
-                        <table class="risk-table" id="table-safety">
-                            <thead>
-                                <tr>
-                                    <th>Function</th>
-                                    <th>File</th>
-                                    <th>Score</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer>LegacyLens · AI-powered legacy code analysis · <span id="footer-date"></span></footer>
+        </div>
+        <div id="plotly-scatter"></div>
     </div>
+</section>
 
-    <script>
-        // ── helpers ──────────────────────────────────────────────────────────────────
-        const $ = id => document.getElementById(id);
+<!-- ── Distribution Charts ────────────────────────── -->
+<section>
+    <div class="section-title">Score Distribution</div>
+    <div class="charts-row">
+        <div class="chart-card">
+            <div class="chart-card-title">
+                <span class="dot" style="background:var(--danger)"></span>
+                Energy Distribution
+            </div>
+            <div class="chart-wrap"><canvas id="chart-energy"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card-title">
+                <span class="dot" style="background:var(--warn)"></span>
+                Debt Distribution
+            </div>
+            <div class="chart-wrap"><canvas id="chart-debt"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card-title">
+                <span class="dot" style="background:var(--safe)"></span>
+                Safety Distribution
+            </div>
+            <div class="chart-wrap"><canvas id="chart-safety"></canvas></div>
+        </div>
+    </div>
+</section>
 
-        async function api(path) {
-            const r = await fetch(path);
-            if (!r.ok) throw new Error(await r.text());
-            return r.json();
-        }
+<!-- ── Module Health Breakdown ────────────────────── -->
+<section>
+    <div class="section-title">Module Health Breakdown</div>
+    <div class="module-card">
+        <table class="risk-table" id="module-table">
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Functions</th>
+                    <th>⚡ Energy</th>
+                    <th>🔧 Debt</th>
+                    <th>🛡 Safety</th>
+                    <th>Risk Profile</th>
+                </tr>
+            </thead>
+            <tbody id="module-tbody"></tbody>
+        </table>
+    </div>
+</section>
 
-        function pillColor(v) {
-            return v >= 7 ? 'pill-red' : v >= 4 ? 'pill-yellow' : 'pill-green';
-        }
-        function dot(v) {
+<!-- ── Top Risk Tables ────────────────────────────── -->
+<section>
+    <div class="section-title">Functions Requiring Attention</div>
+    <div class="tables-row">
+        <div class="table-card">
+            <div class="table-card-title"><span style="color:var(--danger)">⚡</span> Highest Energy (Complexity)</div>
+            <table class="risk-table" id="table-energy">
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>File</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="table-card">
+            <div class="table-card-title"><span style="color:var(--warn)">🔧</span> Highest Technical Debt</div>
+            <table class="risk-table" id="table-debt">
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>File</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="table-card">
+            <div class="table-card-title"><span style="color:var(--safe)">🛡</span> Highest Safety Risk</div>
+            <table class="risk-table" id="table-safety">
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>File</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const { api: _api, $: _$, pillColor: _pillColor, openExplainModal: _openModal, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
+
+    // Chart.js defaults
+    Chart.defaults.color = '#6c7086';
+    Chart.defaults.borderColor = '#313244';
+    Chart.defaults.font.family = 'Inter';
+
+    function dot(v) {
+        const c = v >= 7 ? 'var(--danger)' : v >= 4 ? 'var(--warn)' : 'var(--safe)';
+        return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-right:4px"></span>`;
+    }
+
+    function sparkBar(e, d, s) {
+        const bar = v => {
             const c = v >= 7 ? 'var(--danger)' : v >= 4 ? 'var(--warn)' : 'var(--safe)';
-            return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-right:4px"></span>`;
-        }
+            return `<div class="sparkbar-fill" style="background:${c};height:${(v / 10) * 100}%" title="${v}/10"></div>`;
+        };
+        return `<div class="sparkbar">${bar(e)}${bar(d)}${bar(s)}</div>`;
+    }
 
-        function sparkBar(e, d, s) {
-            const bar = v => {
-                const c = v >= 7 ? 'var(--danger)' : v >= 4 ? 'var(--warn)' : 'var(--safe)';
-                return `<div class="sparkbar-fill" style="background:${c};height:${(v / 10) * 100}%" title="${v}/10"></div>`;
-            };
-            return `<div class="sparkbar">${bar(e)}${bar(d)}${bar(s)}</div>`;
-        }
-
-        // ── Chart.js factory ─────────────────────────────────────────────────────────
-        Chart.defaults.color = '#6c7086';
-        Chart.defaults.borderColor = '#313244';
-        Chart.defaults.font.family = 'Inter';
-
-        function makeBar(id, dist, color, label) {
-            new Chart($(id), {
-                type: 'bar',
-                data: {
-                    labels: dist.labels,
-                    datasets: [{
-                        label, data: dist.counts, backgroundColor: color + '33',
-                        borderColor: color, borderWidth: 2, borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { color: '#23233a' } },
-                        y: {
-                            grid: { color: '#23233a' }, beginAtZero: true,
-                            ticks: { stepSize: 1, precision: 0 }
-                        }
-                    }
+    function makeBar(id, dist, color, label) {
+        new Chart(_$(id), {
+            type: 'bar',
+            data: {
+                labels: dist.labels,
+                datasets: [{
+                    label, data: dist.counts, backgroundColor: color + '33',
+                    borderColor: color, borderWidth: 2, borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#23233a' } },
+                    y: { grid: { color: '#23233a' }, beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
                 }
-            });
-        }
-
-        // ── Risk table ───────────────────────────────────────────────────────────────
-        function fillTable(tableId, rows, metric) {
-            const tbody = document.querySelector(`#${tableId} tbody`);
-            tbody.innerHTML = rows.map(f => {
-                const v = f[metric] ?? 0;
-                const fname = f.name.split('.').pop();
-                const ffile = f.file.split('/').slice(-2).join('/');
-                return `<tr>
-      <td><span class="fn-name">${fname}</span></td>
-      <td><span class="fn-file" title="${f.file}">…/${ffile}</span></td>
-      <td><span class="score-pill ${pillColor(v)}">${v}/10</span></td>
-    </tr>`;
-            }).join('');
-        }
-
-        // ── Module table ─────────────────────────────────────────────────────────────
-        function fillModuleTable(modules) {
-            const tbody = $('module-tbody');
-            const rows = Object.entries(modules)
-                .sort((a, b) => Math.max(b[1].avg_energy, b[1].avg_debt, b[1].avg_safety)
-                    - Math.max(a[1].avg_energy, a[1].avg_debt, a[1].avg_safety));
-            tbody.innerHTML = rows.map(([mod, m]) => `
-    <tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${mod}</td>
-      <td style="color:var(--text-dim)">${m.count}</td>
-      <td>${dot(m.avg_energy)}<span class="score-pill ${pillColor(m.avg_energy)}">${m.avg_energy}</span></td>
-      <td>${dot(m.avg_debt)}<span class="score-pill ${pillColor(m.avg_debt)}">${m.avg_debt}</span></td>
-      <td>${dot(m.avg_safety)}<span class="score-pill ${pillColor(m.avg_safety)}">${m.avg_safety}</span></td>
-      <td>${sparkBar(m.avg_energy, m.avg_debt, m.avg_safety)}</td>
-    </tr>`).join('');
-        }
-
-        // ── Plotly 3D scatter ─────────────────────────────────────────────────────────
-        function render3D(pts) {
-            const color = pts.map(p => Math.max(p.energy, p.debt, p.safety));
-            Plotly.newPlot('plotly-scatter', [{
-                type: 'scatter3d', mode: 'markers',
-                x: pts.map(p => p.energy),
-                y: pts.map(p => p.debt),
-                z: pts.map(p => p.safety),
-                text: pts.map(p => p.name.split('.').pop()),
-                hovertemplate: '<b>%{text}</b><br>Energy: %{x}<br>Debt: %{y}<br>Safety: %{z}<extra></extra>',
-                marker: {
-                    size: 4,
-                    color,
-                    colorscale: [[0, '#34d399'], [0.4, '#fbbf24'], [0.7, '#f87171'], [1, '#dc2626']],
-                    opacity: 0.85,
-                    colorbar: { title: 'Risk', tickfont: { color: '#6c7086' }, len: 0.6 }
-                }
-            }], {
-                paper_bgcolor: '#181825', plot_bgcolor: '#181825',
-                font: { color: '#cdd6f4', family: 'Inter' },
-                scene: {
-                    xaxis: { title: 'Energy', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                    yaxis: { title: 'Debt', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                    zaxis: { title: 'Safety', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                    bgcolor: '#181825',
-                },
-                margin: { l: 0, r: 0, t: 0, b: 0 },
-            }, { responsive: true, displaylogo: false });
-        }
-
-        // ── Main ─────────────────────────────────────────────────────────────────────
-        async function init() {
-            try {
-                const [summary, dist, topEnergy, topDebt, topSafety, scatter, repoInfo] = await Promise.all([
-                    api('/api/summary'),
-                    api('/api/distribution'),
-                    api('/api/top?metric=energy&limit=10'),
-                    api('/api/top?metric=debt&limit=10'),
-                    api('/api/top?metric=safety&limit=10'),
-                    api('/api/scatter'),
-                    api('/api/repo_root'),
-                ]);
-
-                if (summary.error) throw new Error(summary.error);
-
-                // KPIs
-                $('kpi-total').textContent = summary.total_functions.toLocaleString();
-                $('kpi-files').textContent = `across ${summary.risky_files} risky files`;
-                $('kpi-energy').textContent = summary.avg_energy;
-                $('kpi-debt').textContent = summary.avg_debt;
-                $('kpi-safety').textContent = summary.avg_safety;
-                $('kpi-risk').textContent = summary.high_risk_count;
-                $('kpi-risky-files').textContent = `in ${summary.risky_files} files`;
-
-                // Header meta
-                $('analysis-date').textContent = 'Analysed: ' + summary.analysed_at;
-                if (repoInfo.root) {
-                    const parts = repoInfo.root.split('/');
-                    $('repo-label').innerHTML = `<strong>📂 ${parts[parts.length - 1]}</strong>`;
-                }
-                $('footer-date').textContent = new Date().getFullYear();
-
-                // Charts
-                makeBar('chart-energy', dist.energy, '#f87171', 'Functions');
-                makeBar('chart-debt', dist.debt, '#fbbf24', 'Functions');
-                makeBar('chart-safety', dist.safety, '#34d399', 'Functions');
-
-                // Module heatmap
-                fillModuleTable(summary.module_summary);
-
-                // 3D scatter
-                render3D(scatter);
-
-                // Top-risk tables
-                fillTable('table-energy', topEnergy, 'energy');
-                fillTable('table-debt', topDebt, 'debt');
-                fillTable('table-safety', topSafety, 'safety');
-
-                // Done
-                $('loading').style.display = 'none';
-                $('app').style.display = 'flex';
-            } catch (err) {
-                $('loading').style.display = 'none';
-                $('app').style.display = 'flex';
-                const banner = $('error-banner');
-                banner.style.display = 'block';
-                banner.textContent = '⚠ ' + err.message + '  —  Run "legacylens index <path>" first, then restart the dashboard.';
             }
+        });
+    }
+
+    function fillTable(tableId, rows, metric) {
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        tbody.innerHTML = rows.map(f => {
+            const v = f[metric] ?? 0;
+            const fname = f.name.split('.').pop();
+            const ffile = f.file.split('/').slice(-2).join('/');
+            return `<tr>
+                <td><span class="fn-name" data-func="${f.name}">${fname}</span></td>
+                <td><span class="fn-file" title="${f.file}">…/${ffile}</span></td>
+                <td><span class="score-pill ${_pillColor(v)}">${v}/10</span></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function fillModuleTable(modules) {
+        const tbody = _$('module-tbody');
+        const rows = Object.entries(modules)
+            .sort((a, b) => Math.max(b[1].avg_energy, b[1].avg_debt, b[1].avg_safety)
+                - Math.max(a[1].avg_energy, a[1].avg_debt, a[1].avg_safety));
+        tbody.innerHTML = rows.map(([mod, m]) => `
+            <tr>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${mod}</td>
+                <td style="color:var(--text-dim)">${m.count}</td>
+                <td>${dot(m.avg_energy)}<span class="score-pill ${_pillColor(m.avg_energy)}">${m.avg_energy}</span></td>
+                <td>${dot(m.avg_debt)}<span class="score-pill ${_pillColor(m.avg_debt)}">${m.avg_debt}</span></td>
+                <td>${dot(m.avg_safety)}<span class="score-pill ${_pillColor(m.avg_safety)}">${m.avg_safety}</span></td>
+                <td>${sparkBar(m.avg_energy, m.avg_debt, m.avg_safety)}</td>
+            </tr>`).join('');
+    }
+
+    // ── Enhanced 3D scatter with Safety-based color + click-to-modal ──
+    function render3D(pts) {
+        // Color based on Safety score (red-yellow-green gradient)
+        const safetyColors = pts.map(p => p.safety);
+
+        Plotly.newPlot('plotly-scatter', [{
+            type: 'scatter3d', mode: 'markers',
+            x: pts.map(p => p.energy),
+            y: pts.map(p => p.debt),
+            z: pts.map(p => p.safety),
+            text: pts.map(p => `${p.name.split('.').pop()}`),
+            customdata: pts.map(p => [p.name, p.file, p.energy, p.debt, p.safety]),
+            hovertemplate: '<b>%{text}</b><br>' +
+                'File: %{customdata[1]}<br>' +
+                'Energy: %{customdata[2]}<br>' +
+                'Debt: %{customdata[3]}<br>' +
+                'Safety: %{customdata[4]}<extra></extra>',
+            marker: {
+                size: 5,
+                color: safetyColors,
+                colorscale: [[0, '#34d399'], [0.3, '#34d399'], [0.5, '#fbbf24'], [0.7, '#f87171'], [1, '#dc2626']],
+                opacity: 0.9,
+                colorbar: {
+                    title: { text: 'Safety', font: { color: '#cdd6f4' } },
+                    tickfont: { color: '#6c7086' },
+                    len: 0.6
+                },
+                line: { width: 0.5, color: 'rgba(255,255,255,.1)' }
+            }
+        }], {
+            paper_bgcolor: '#181825', plot_bgcolor: '#181825',
+            font: { color: '#cdd6f4', family: 'Inter' },
+            scene: {
+                xaxis: { title: 'Energy', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
+                yaxis: { title: 'Debt', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
+                zaxis: { title: 'Safety', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
+                bgcolor: '#181825',
+            },
+            margin: { l: 0, r: 0, t: 0, b: 0 },
+        }, { responsive: true, displaylogo: false });
+
+        // Click on a data point → open modal
+        document.getElementById('plotly-scatter').on('plotly_click', function (data) {
+            if (data.points && data.points.length) {
+                const pt = data.points[0];
+                const funcName = pt.customdata[0];
+                _openModal(funcName);
+            }
+        });
+    }
+
+    // ── Click handler for function names in tables ──
+    document.addEventListener('click', e => {
+        const fnEl = e.target.closest('.fn-name[data-func]');
+        if (fnEl) _openModal(fnEl.dataset.func);
+    });
+
+    // ── Main init ──
+    async function init() {
+        try {
+            await _loadFns();
+            const [summary, dist, topEnergy, topDebt, topSafety, scatter] = await Promise.all([
+                _api('/api/summary'),
+                _api('/api/distribution'),
+                _api('/api/top?metric=energy&limit=10'),
+                _api('/api/top?metric=debt&limit=10'),
+                _api('/api/top?metric=safety&limit=10'),
+                _api('/api/scatter'),
+            ]);
+
+            if (summary.error) throw new Error(summary.error);
+
+            // KPIs
+            _$('kpi-total').textContent = summary.total_functions.toLocaleString();
+            _$('kpi-files').textContent = `across ${summary.risky_files} risky files`;
+            _$('kpi-energy').textContent = summary.avg_energy;
+            _$('kpi-debt').textContent = summary.avg_debt;
+            _$('kpi-safety').textContent = summary.avg_safety;
+            _$('kpi-risk').textContent = summary.high_risk_count;
+            _$('kpi-risky-files').textContent = `in ${summary.risky_files} files`;
+
+            // Charts
+            makeBar('chart-energy', dist.energy, '#f87171', 'Functions');
+            makeBar('chart-debt', dist.debt, '#fbbf24', 'Functions');
+            makeBar('chart-safety', dist.safety, '#34d399', 'Functions');
+
+            // Module heatmap
+            fillModuleTable(summary.module_summary);
+
+            // 3D scatter (HERO)
+            render3D(scatter);
+
+            // Top-risk tables
+            fillTable('table-energy', topEnergy, 'energy');
+            fillTable('table-debt', topDebt, 'debt');
+            fillTable('table-safety', topSafety, 'safety');
+
+            // Done
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            await _initNav();
+        } catch (err) {
+            _$('loading').style.display = 'none';
+            _$('app-root').style.display = 'flex';
+            _$('app-root').style.flexDirection = 'column';
+            const banner = _$('error-banner');
+            banner.style.display = 'block';
+            banner.textContent = '⚠ ' + err.message + '  —  Run "legacylens index <path>" first, then restart the dashboard.';
         }
+    }
 
-        init();
-    </script>
-</body>
-
-</html>
+    init();
+</script>
+{% endblock %}

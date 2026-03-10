@@ -117,11 +117,15 @@
 - **Adjustment:** Created `audit_report.md` and synced documentation with actual repository capabilities.
 - **Momentum:** 10/10. Ready for final stretch and demo.
 
-### Business Analytics Sprint: March 07, 2026
-- **Goal:** Provide a high-level visual interface for codebase health assessment.
-- **Result:**
-    - **Web Dashboard:** Built a Flask app serving code analysis aggregates.
-    - **Visualization:** Integrated **Chart.js** for score distributions and **Plotly** for interactive 3D CodeBalance explorers.
-    - **Analytics:** Added `/api/summary` and `/api/top` endpoints for ranking technical debt.
-    - **Scalability:** Successfully demonstrated on 2,903 functions from Spring PetClinic.
 - **Momentum:** 10/10. Tooling is now enterprise-ready.
+
+### Web Dashboard Overhaul: March 10, 2026
+- **Goal:** Launch a production-grade web dashboard (v0.2.0-web-preview).
+- **Result:**
+    - **Unified Layout:** Created `base.html` with persistent navigation, search, and shared modal.
+    - **Interactive 3D Hero:** Replaced static hero with dynamic Plotly/d3.js 3D scatter plot.
+    - **Risk Treemap:** Integrated d3.js treemap for module-level debt visualization with drilldown logic.
+    - **Function List:** Sortable/filterable table with color-coded risk axes (Energy, Debt, Safety).
+    - **Search:** Global autocomplete search with split-view explanation results.
+    - **CLI Integration:** Added `--web` and `--format json|markdown` flags for better terminal-to-web transitions.
+- **Momentum:** 10/10. Submission-ready.

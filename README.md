@@ -2,10 +2,10 @@
 
 > **Intelligent Context Engineering for Legacy Code Comprehension**
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.0--web--preview-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![Status](https://img.shields.io/badge/status-research_preview-orange.svg)
+![Status](https://img.shields.io/badge/status-web_preview-blue.svg)
 
 **LegacyLens** is a research-backed developer tool designed to demystify complex, undocumented legacy codebases. Unlike standard AI coding assistants that rely on potential "hallucinations" or purely semantic retrieval, LegacyLens employs a **Smart Hybrid Pipeline**: combining deterministic static analysis (Call Graphs, ASTs) with a **Multi-Agent Verification Loop**: to produce accurate, structurally sound explanations.
 
@@ -32,8 +32,11 @@ LegacyLens orchestrates a **Writer-Critic-Finalizer Loop** with **Compositional 
 LegacyLens includes robust tools for analysis and measurement:
 -   **Ablation Runner:** Built-in scripts to test and compare different agent configurations.
 -   **BLEU/ROUGE Scorer:** Pure Python, zero-dependency metric calculation for evaluating explanation quality against references.
--   **3D CodeBalance Visualization:** Generates dependency-free HTML 3D scatter plots of function CodeBalance scores.
--   **Interactive Web Dashboard:** A Flask-based business analytics interface providing KPI cards, score distributions (Chart.js), and interactive 3D space exploration (Plotly).
+-   **Interactive Web Dashboard (v0.2.0):**
+    -   **3D Hero Exploration:** Integrated Plotly 3D scatter plot of codebase health.
+    -   **Risk Heatmap:** d3.js module-level treemaps for identifying high-debt hotspots.
+    -   **Split-View Search:** Persistent navigation search with autocomplete and side-by-side explanation panels.
+-   **CLI-to-Web Bridge:** Seamlessly transition from terminal to browser using the `--web` flag.
 
 
 ###  3D CodeBalance Score
@@ -135,7 +138,11 @@ legacylens index my-python-proj/
 ### 2. Query the Codebase (RAG)
 Find code using natural language.
 ```bash
+# Terminal output
 legacylens query "where is user input validated?"
+
+# Open interactive results in web dashboard
+legacylens query "input validation" --web
 ```
 
 ### 3. Explain & Verify (Core Feature)
@@ -144,8 +151,12 @@ Trigger the Multi-Agent loop to explain a specific function.
 # Local Mode
 legacylens explain "processFindForm"
 
-# Cloud/Fast Mode
-LLM_PROVIDER=groq legacylens explain "processFindForm"
+# Cloud/Fast Mode + Web Dashboard
+LLM_PROVIDER=groq legacylens explain "processFindForm" --web
+
+# Structured JSON/Markdown output
+legacylens explain "processFindForm" --format json
+legacylens explain "processFindForm" --format markdown
 ```
 
 **Sample Output:**

@@ -52,6 +52,36 @@ def create_app():
     def index():
         return render_template('index.html')
 
+    @app.route('/functions')
+    def functions_view():
+        return render_template('functions.html')
+
+    @app.route('/search')
+    def search_view():
+        return render_template('search.html')
+
+    @app.route('/heatmap')
+    def heatmap_view():
+        return render_template('heatmap.html')
+
+    # ── CodeBalance API (3D scatter data with full detail) ─────────────────────
+    @app.route('/api/codebalance')
+    def api_codebalance():
+        fns = _load_functions()
+        return jsonify([
+            {
+                'name':   f.get('name', ''),
+                'file':   f.get('file', ''),
+                'energy': f.get('energy', 0),
+                'debt':   f.get('debt', 0),
+                'safety': f.get('safety', 0),
+                'line_start': f.get('line_start', 0),
+                'line_end':   f.get('line_end', 0),
+            }
+            for f in fns
+            if f.get('energy') is not None
+        ])
+
     @app.route('/api/functions')
     def api_functions():
         file_filter = request.args.get('file')
