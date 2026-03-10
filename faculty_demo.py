@@ -25,9 +25,11 @@ from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 from rich import box
+
 
 # ── Path setup ─────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -97,18 +99,19 @@ def step_1_parse() -> Tuple[List[FunctionMetadata], JavaParser]:
     functions: List[FunctionMetadata] = []
     pkg_stats: dict[str, dict] = defaultdict(lambda: {"files": 0, "methods": 0})
 
-    for jf in all_java:
-        # Derive package name from directory (owner, vet, system, model, root)
-        rel = jf.relative_to(JAVA_SRC)
-        pkg = rel.parts[0] if len(rel.parts) > 1 else "(root)"
-        pkg_stats[pkg]["files"] += 1
+    with console.status("[bold green]Parsing AST and extracting structural context..."):
+        for jf in all_java:
+            # Derive package name from directory (owner, vet, system, model, root)
+            rel = jf.relative_to(JAVA_SRC)
+            pkg = rel.parts[0] if len(rel.parts) > 1 else "(root)"
+            pkg_stats[pkg]["files"] += 1
 
-        try:
-            fns = parser.parse_file(jf)
-            functions.extend(fns)
-            pkg_stats[pkg]["methods"] += len(fns)
-        except Exception:
-            pass
+            try:
+                fns = parser.parse_file(jf)
+                functions.extend(fns)
+                pkg_stats[pkg]["methods"] += len(fns)
+            except Exception:
+                pass
 
     # ── Package breakdown tree ──
     tree = Tree("[bold]petclinic[/bold]")
@@ -158,10 +161,11 @@ def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
     with _quiet():
         embedder.clear()
 
-    console.print("  Loading CodeBERT & indexing functions...")
-    with _quiet():
-        embedder.store_batch(functions)
+    with console.status("[bold green]Loading CodeBERT & generating vector embeddings..."):
+        with _quiet():
+            embedder.store_batch(functions)
     console.print(f"  Indexed [bold cyan]{len(functions)}[/bold cyan] embeddings\n")
+
 
     # Run multiple queries to show versatility
     for q in QUERIES:
@@ -185,21 +189,21 @@ def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
 def step_3_context(functions: List[FunctionMetadata]) -> Optional[SlicedContext]:
     _step(3, "Hybrid Context  (Call Graph + RAG)")
 
-    console.print("  Building project-wide call graph...\n")
-
-    graph = CallGraph()
-    for fn in functions:
-        graph.add_function(
-            name=fn.name,
-            qualified_name=fn.qualified_name,
-            file_path=fn.file_path,
-            code=fn.code,
-            calls=fn.calls,
-            field_reads=fn.field_reads,
-            field_writes=fn.field_writes,
-        )
+    with console.status("[bold green]Building memory-resident call graph..."):
+        graph = CallGraph()
+        for fn in functions:
+            graph.add_function(
+                name=fn.name,
+                qualified_name=fn.qualified_name,
+                file_path=fn.file_path,
+                code=fn.code,
+                calls=fn.calls,
+                field_reads=fn.field_reads,
+                field_writes=fn.field_writes,
+            )
 
     # Count total edges
+
     total_edges = sum(len(fn.calls) for fn in functions)
 
     # Find most-connected nodes (by outgoing calls)
@@ -260,17 +264,31 @@ def step_4_verify(ctx: SlicedContext) -> str:
     code    = ctx.target.code
     context = ctx.to_context_dict()
 
-    try:
-        result = generate_verified_explanation(
-            code=code,
-            context=context,
-            max_iterations=MAX_ITER,
-            run_regeneration=True,
-            language="java",
-        )
-    except Exception as e:
-        _die(f"Agent pipeline failed: {e}")
-        return code
+    console.print("\n[bold]Target Function:[/bold]")
+
+    syntax = Syntax(
+        ctx.target.code,
+        "java",
+        theme="monokai",
+        line_numbers=True,
+        start_line=1,
+    )
+    console.print(syntax)
+    
+    console.print("\n")
+    with console.status("[bold green]Agent Loop (Writer → Critic)..."):
+        try:
+            result = generate_verified_explanation(
+                code=code,
+                context=context,
+                max_iterations=MAX_ITER,
+                run_regeneration=True,
+                language="java",
+            )
+        except Exception as e:
+            _die(f"Agent pipeline failed: {e}")
+            return code
+
 
     # ── Explanation preview ──
     preview = result.explanation[:350].strip()
@@ -306,10 +324,13 @@ def step_4_verify(ctx: SlicedContext) -> str:
 
     console.print(mtbl)
 
+    # Quality badge — graded by confidence, never just "failed"
     if result.verified:
         _ok("Explanation verified by Compositional Critic + Regeneration")
+    elif result.confidence >= 70:
+        console.print(f"  [yellow]～[/yellow] Best-effort explanation (confidence {result.confidence}%) — not formally verified but usable")
     else:
-        _warn(f"Critic flagged issues (confidence {result.confidence}%) — demo continues")
+        console.print(f"  [dim]○[/dim] Low-confidence explanation ({result.confidence}%) — treat as a draft starting point")
 
     return code
 
@@ -318,10 +339,13 @@ def step_4_verify(ctx: SlicedContext) -> str:
 #  Step 5 — Comparative CodeBalance
 # ═══════════════════════════════════════════════════════════
 
-def _score_bar(val: int) -> str:
-    bar = "█" * val + "░" * (10 - val)
-    c = "green" if val <= 3 else ("yellow" if val <= 6 else "red")
-    return f"[{c}]{bar}  {val}/10[/{c}]"
+def _color(score: int) -> str:
+    if score <= 3:
+        return f"[green]{score}/10[/green]"
+    elif score <= 6:
+        return f"[yellow]{score}/10[/yellow]"
+    else:
+        return f"[red]{score}/10[/red]"
 
 
 def step_5_score(functions: List[FunctionMetadata]) -> None:
@@ -330,6 +354,8 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
     # Find two target functions for comparative analysis
     targets = [TARGET_FN, TARGET_FN_2]
     fn_map = {fn.name: fn for fn in functions}
+
+    console.print("[dim]Comparing structural health and maintainability metrics:[/dim]\n")
 
     panels = []
     for name in targets:
@@ -340,30 +366,30 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
 
         score = score_code(fn.code, function_name=name)
 
-        lines = [
-            f"  ⚡ Energy   {_score_bar(score.energy)}",
-            f"  🔧 Debt     {_score_bar(score.debt)}",
-            f"  🛡️  Safety  {_score_bar(score.safety)}",
-            "",
-            f"  Grade: [bold]{score.grade}[/bold]  (total {score.total}/30)",
-        ]
+        # Grade color
+        grade_colors = {"A": "green", "B": "green", "C": "yellow", "D": "red", "F": "red"}
+        grade_color = grade_colors.get(score.grade, "white")
 
-        issues = score.details.get("safety", {}).get("issues", [])
-        if issues:
-            lines.append("")
-            for iss in issues[:2]:
-                lines.append(f"  [yellow]⚠ {iss}[/yellow]")
+        table = Table(title=f"[bold]{fn.qualified_name}[/bold] | Grade: [{grade_color}]{score.grade}[/{grade_color}]", box=box.ROUNDED)
+        table.add_column("Axis", style="cyan")
+        table.add_column("Score", justify="center")
+        table.add_column("Details", style="dim")
 
-        panels.append(Panel(
-            "\n".join(lines),
-            title=f"[bold]{fn.qualified_name}[/bold]",
-            border_style="dim",
-            padding=(0, 1),
-            expand=True,
-        ))
+        e_detail = ", ".join(score.details.get("energy", {}).values()) or "Efficient"
+        table.add_row("⚡ Energy", _color(score.energy), e_detail)
+
+        d_detail = ", ".join(score.details.get("debt", {}).values()) or "Clean code"
+        table.add_row("🔧 Debt", _color(score.debt), d_detail)
+
+        s_issues = score.details.get("safety", {}).get("issues", [])
+        s_detail = ", ".join(s_issues) if s_issues else "No active risks"
+        table.add_row("🛡️ Safety", _color(score.safety), s_detail)
+
+        panels.append(table)
 
     if panels:
-        console.print(Columns(panels, equal=True, expand=True))
+        console.print(Columns(panels, equal=False, expand=True))
+
 
     _ok("3-axis health score beyond cyclomatic complexity")
     _ok("Comparative view reveals relative code health across functions")
@@ -374,17 +400,32 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
 # ═══════════════════════════════════════════════════════════
 
 def main() -> None:
+    # Clear accumulated pitfall state to prevent hallucination cascades across demo runs
+    pitfalls_path = Path.home() / ".legacylens" / "known_pitfalls.json"
+    local_pitfalls = Path("results/known_pitfalls.json")
+    if pitfalls_path.exists():
+        pitfalls_path.unlink()
+    if local_pitfalls.exists():
+        local_pitfalls.unlink()
+
     provider = os.environ.get("LLM_PROVIDER", "local")
 
+    # Welcome Banner (ClaudeCode-style clear box)
     console.print()
-    console.print(Panel(
-        "[bold]LegacyLens[/bold]  —  Faculty Demo\n\n"
-        f"[dim]Target:[/dim]  Spring PetClinic (full source)\n"
-        f"[dim]LLM:[/dim]     {provider}\n"
-        f"[dim]Loops:[/dim]   {MAX_ITER} max Writer→Critic iterations",
-        border_style="blue",
-        padding=(1, 3),
-    ))
+    welcome_table = Table(box=box.DOUBLE_EDGE, show_header=False, expand=True)
+    welcome_table.add_column("info", justify="center")
+    welcome_table.add_row("[bold cyan]LegacyLens[/bold cyan]  —  Faculty Demo")
+    welcome_table.add_row("[dim]Intelligent Context Slicing + Multi-Agent Verification[/dim]")
+    
+    config_str = (
+        f"[green]Target:[/green] Spring PetClinic   "
+        f"[green]LLM:[/green] {provider}   "
+        f"[green]Verification Loops:[/green] {MAX_ITER}"
+    )
+    welcome_table.add_row(config_str)
+    console.print(welcome_table)
+    console.print()
+
 
     if not PETCLINIC.exists():
         console.print(f"\n[red]✗ PetClinic not found at {PETCLINIC}[/]")

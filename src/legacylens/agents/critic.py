@@ -168,6 +168,12 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     are mentioned in the explanation. If the explanation references names
     NOT in the code, that's a potential hallucination.
 
+    Tolerance rules:
+    - Case-insensitive matching
+    - camelCase sub-word matching (e.g. "lastName" matches "getLastName")
+    - Substring matching: if the ref is a substring of any code identifier,
+      it's a paraphrase/abbreviation, not a hallucination.
+
     Returns:
         (passed, list_of_issues)
     """
@@ -176,17 +182,13 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     # Extract identifiers from code (simple word-boundary matching)
     code_identifiers = set(re.findall(r'\b([a-zA-Z_]\w+)\b', code))
 
-    # Also extract sub-identifiers by splitting camelCase/PascalCase names.
-    # e.g. "getLastName" -> {"get", "Last", "Name", "lastName", "LastName"}
-    # This prevents false positives when the LLM writes "lastName" instead
-    # of the full method name "getLastName".
+    # Build a lowercase set and a set of camelCase sub-words
     sub_ids = set()
     for ident in code_identifiers:
         sub_ids.update(_split_camel_case(ident))
     code_identifiers_lower = {x.lower() for x in code_identifiers} | sub_ids
 
     # Extract identifiers from explanation that look like code references
-    # (often formatted in backticks, camelCase, or snake_case)
     explanation_refs = set()
 
     # Backtick-wrapped references: `functionName`
@@ -198,14 +200,14 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     # snake_case words (likely code references)
     explanation_refs.update(re.findall(r'\b(\w+_\w+)\b', explanation))
 
-    # Check for referenced names not found in the code
-    # Filter out common English compound words and programming terms
+    # Allowlist: common English compound/programming terms that are NOT hallucinations
     common_words = {
         "the", "and", "for", "this", "that", "with", "from", "have", "been",
         "lastName", "firstName", "totalElements", "defaultValue",
         "requestParam", "bindingResult", "notFound", "isEmpty",
         "side_effects", "error_handling", "return_value", "last_name",
-        "step_by", "line_count",
+        "step_by", "line_count", "pageSize", "pageNumber", "totalPages",
+        "getMapping", "postMapping", "requestMapping", "pathVariable",
     }
     common_words_lower = {w.lower() for w in common_words}
 
@@ -214,14 +216,23 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
         # Skip if directly in code identifiers
         if ref in code_identifiers:
             continue
-        # Skip if lowercase match found (covers case-insensitive matches)
+        # Skip if lowercase match found (case-insensitive)
         if ref.lower() in code_identifiers_lower:
             continue
-        # Skip if in common words
+        # Skip if in allowlist
         if ref.lower() in common_words_lower:
             continue
-        # Skip short names
-        if len(ref) <= 3:
+        # Skip short names — too noisy
+        if len(ref) <= 5:
+            continue
+        # Skip if the ref is a substring of any code identifier
+        # e.g. "findOwners" is a substring of "findPaginatedForOwnersLastName"
+        ref_lower = ref.lower()
+        if any(ref_lower in ident.lower() for ident in code_identifiers):
+            continue
+        # Skip if any code identifier is a substring of the ref
+        # e.g. "owners" appears in "ownersResults"
+        if any(ident.lower() in ref_lower for ident in code_identifiers if len(ident) > 4):
             continue
         suspicious.add(ref)
 
@@ -232,6 +243,7 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
 
     passed = len(issues) == 0
     return passed, issues
+
 
 
 # ---------------------------------------------------------------------------

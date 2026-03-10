@@ -3,10 +3,13 @@
 The orchestrator coordinates the multi-agent verification:
 1. Writer drafts an explanation (temperature=0.3)
 2. Critic checks for hallucinations (returns PASS / FAIL / REVISE)
-3. If REVISE, Writer revises with structured feedback
-4. Repeat until PASS, FAIL, or max iterations (5)
+3. If REVISE or FAIL (with retries), Writer revises with structured feedback
+4. If FAIL retries exhausted, return the best explanation seen so far
 5. (Optional) Finalizer polishes the verified explanation
 6. (Optional) Validate via code regeneration
+
+Key guarantee: ALWAYS produces an explanation. A FAIL never results in an
+empty or abrupt termination — the highest-confidence draft is returned.
 """
 
 from dataclasses import dataclass
@@ -65,9 +68,13 @@ def generate_verified_explanation(
     The loop uses three-state verdict logic:
     - PASS:   Accept immediately, optionally polish with Finalizer
     - REVISE: Writer gets structured feedback, tries again (up to max_iterations)
-    - FAIL:   Hard stop, explanation has fundamental problems
+    - FAIL:   SAME as REVISE — Writer gets feedback, retries up to 2 times.
+              After 2 FAIL retries, stop and return the best explanation seen.
 
-    Early accept: If factual ≥ 90% and completeness ≥ 95%, accept on first pass.
+    Key design principle: ALWAYS produce an explanation. If no iteration
+    passes, return the highest-confidence attempt rather than aborting.
+
+    Early accept: If factual >= 90% and completeness >= 95%, accept on first pass.
 
     Args:
         code: Source code to explain
@@ -82,13 +89,24 @@ def generate_verified_explanation(
             and regeneration (None, "simple", "verbose", or "x3").
 
     Returns:
-        VerifiedExplanation with final result and metadata
+        VerifiedExplanation with final result and metadata.
+        Always contains a non-empty explanation string.
     """
     explanation = ""
-    critique = None
+    critique: Optional[CritiqueResult] = None
     iteration = 0
 
     revision_context = context.copy()
+
+    # Track the best output across all iterations so we always have
+    # something meaningful to return, regardless of verdict
+    best_explanation = ""
+    best_critique: Optional[CritiqueResult] = None
+    best_confidence = -1
+
+    # Cap how many consecutive FAIL retries we allow before giving up
+    fail_count = 0
+    MAX_FAIL_RETRIES = 2
 
     for iteration in range(1, max_iterations + 1):
         # Step 1: Writer generates/revises explanation
@@ -98,15 +116,9 @@ def generate_verified_explanation(
             model=writer_model,
         )
 
-        # Check for writer errors
+        # If the writer itself errored, we still have best_explanation as fallback
         if explanation.startswith("[Writer Error:"):
-            return VerifiedExplanation(
-                explanation=explanation,
-                verified=False,
-                confidence=0,
-                iterations=iteration,
-                critique=None,
-            )
+            break
 
         # Step 2: Critic verifies (returns PASS / FAIL / REVISE)
         critique = critique_explanation(
@@ -116,24 +128,45 @@ def generate_verified_explanation(
             repetition_variant=repetition_variant,
         )
 
+        # Always track the best attempt by confidence score
+        if critique.confidence > best_confidence:
+            best_confidence = critique.confidence
+            best_explanation = explanation
+            best_critique = critique
+
         # PASS → accept immediately
         if critique.verdict == "PASS":
             break
 
-        # FAIL → hard stop, don't bother revising
+        # FAIL → treat like REVISE but cap consecutive failures
         if critique.verdict == "FAIL":
-            break
+            fail_count += 1
+            if fail_count >= MAX_FAIL_RETRIES:
+                # Exhausted FAIL retries — stop here, fall back to best
+                break
+            # Otherwise fall through: give the Writer corrective feedback
 
-        # REVISE → feed categorized issues back, let the Writer try again
+        # REVISE or FAIL-with-retries → feed structured feedback back to Writer
         if critique.issues:
             revision_context["revision_feedback"] = critique.to_revision_prompt()
 
-            # Record failure patterns for meta-prompt accumulation
+            # Record failure patterns (MAML-style meta-learning)
             try:
                 from legacylens.agents.utils import record_critique_pitfalls
                 record_critique_pitfalls(critique)
             except Exception:
                 pass  # Non-critical — don't break the loop
+
+    # ── Always return the best explanation we produced ──────────────────────
+    # If the current explanation is a writer error or empty, use the best seen.
+    # Also prefer the best if it had higher confidence than the final iteration.
+    current_conf = critique.confidence if critique else -1
+    if not explanation or explanation.startswith("[Writer Error:"):
+        explanation = best_explanation
+        critique = best_critique
+    elif best_explanation and best_confidence > current_conf:
+        explanation = best_explanation
+        critique = best_critique
 
     # --- Optional: Regeneration validation ---
     fidelity_score = None

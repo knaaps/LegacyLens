@@ -64,10 +64,18 @@ Results are saved to:
   structural debt the thesis aims to surface automatically.
 - Average grade: **B** vs PetClinic's **A**, quantifying the maintainability gap.
 
+### Full Codebase Interactive Dashboard
+- Using the new `legacylens dashboard` command launches a Flask + Plotly dashboard
+  that visualizes the CodeBalance scores of *all* 2,903 functions in PetClinic interactively.
+- Enables whole-codebase health assessment, top-risk metric tables, and live module hotspots.
+
+
 ---
 
 ## Plot Screenshots
-*(Take screenshots of the two HTML files and embed here for the thesis.)*
+*(Take screenshots of the two HTML files and the Web Dashboard, embedding here for the thesis.)*
 
 - `results/codebalance_3d_petclinic.html` → screenshot: `results/petclinic_codebalance.png`
 - `results/codebalance_3d_ant.html` → screenshot: `results/ant_codebalance.png`
+- `legacylens dashboard` → screenshot: `results/web_dashboard_overview.png`
+
