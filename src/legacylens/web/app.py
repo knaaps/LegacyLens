@@ -316,4 +316,30 @@ def create_app():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    # ── Persistent Explanation Cache ──────────────────────────────────────────
+    @app.route('/api/explanation')
+    def api_explanation():
+        """Retrieve a cached high-confidence explanation.
+
+        Query params:
+          ?fn=<qualified_name>   (e.g. petclinic.Owner.processFindForm)
+        """
+        fn = request.args.get('fn', '')
+        if not fn:
+            return jsonify({'error': 'Missing fn parameter'}), 400
+
+        try:
+            from legacylens.agents.explanation_store import ExplanationStore, current_fingerprint
+            store = ExplanationStore()
+            # Pass current fingerprint to ensure we don't return stale records
+            # if the codebase has been re-indexed.
+            record = store.get(fn, codebase_version=current_fingerprint())
+
+            if not record:
+                return jsonify({'error': 'Not found or stale'}), 404
+
+            return jsonify(record)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     return app

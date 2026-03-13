@@ -293,6 +293,7 @@ def step_4_verify(ctx: SlicedContext) -> str:
     console.print("\n")
     with console.status("[bold green]Agent Loop (Writer → Critic)..."):
         try:
+            from legacylens.agents.explanation_store import current_fingerprint
             result = generate_verified_explanation(
                 code=code,
                 context=context,
@@ -300,6 +301,8 @@ def step_4_verify(ctx: SlicedContext) -> str:
                 run_regeneration=True,
                 language="java",
                 sop=sop,
+                qualified_name=ctx.target.qualified_name,
+                codebase_version=current_fingerprint(),
             )
         except Exception as e:
             _die(f"Agent pipeline failed: {e}")

@@ -63,6 +63,8 @@ def generate_verified_explanation(
     language: str = "java",
     repetition_variant: str | None = None,
     sop: dict[str, Any] | None = None,
+    function_name: str = "",
+    codebase_version: str | None = None,
 ) -> VerifiedExplanation:
     """
     Run the Writer→Critic→Finalizer verification pipeline.
@@ -89,6 +91,11 @@ def generate_verified_explanation(
         language: Source code language ("java" or "python")
         repetition_variant: Prompt repetition strategy for Critic verification
             and regeneration (None, "simple", "verbose", or "x3").
+        function_name: Optional qualified name of the function being explained.
+            If provided, PASS results with high fidelity are cached in the
+            persistent ExplanationStore.
+        codebase_version: Optional fingerprint of the codebase (git hash or
+            index timestamp). Used for cache staleness checking.
 
     Returns:
         VerifiedExplanation with final result and metadata.
@@ -220,6 +227,25 @@ def generate_verified_explanation(
             )
         except Exception:
             pass  # Non-critical — don't break the pipeline
+
+    # --- Optional: Persistence (Cache high-confidence PASS) ---
+    if function_name and is_verified and fidelity_score:
+        from legacylens.agents.explanation_store import FIDELITY_THRESHOLD, ExplanationStore
+        if fidelity_score >= FIDELITY_THRESHOLD:
+            try:
+                store = ExplanationStore()
+                store.upsert(
+                    fn_qualified_name=function_name,
+                    text=best_explanation,  # best draft (writer or best fallback)
+                    markdown=explanation,   # final (potentially polished) version
+                    confidence=float(critique.confidence) if critique else 0.0,
+                    fidelity=float(fidelity_score),
+                    codebase_version=codebase_version
+                )
+            except Exception as e:
+                # Cache failure should not crash the main pipeline
+                import logging
+                logging.getLogger(__name__).warning("Orchestrator: Failed to persist explanation: %s", e)
 
     return VerifiedExplanation(
         explanation=explanation,

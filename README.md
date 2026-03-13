@@ -27,6 +27,7 @@ LegacyLens orchestrates a **Writer-Critic-Finalizer Loop** with **Compositional 
     3.  **Risk:** Flags unmentioned safety issues (e.g., SQL injection).
 -   **Regeneration Validator:** Proves understanding by reconstructing the code from the explanation (AST fidelity check). Now incorporates **Prompt Repetition (Leviathan et al. 2025)** to maximize structural fidelity and reduce hallucinations in code-generation mode.
 -   **Finalizer Agent:** Polishes the verified explanation for maximum readability, structuring the output into clear paragraphs for purpose, parameters, return, and side effects.
+-   **Persistent Explanation Cache (New):** Stores high-confidence results in a dedicated ChromaDB collection. Sub-second retrieval for previously verified functions, significantly reducing cost and latency for repeat queries.
 
 ###  Evaluation & Visualization
 LegacyLens includes robust tools for analysis and measurement:
