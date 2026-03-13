@@ -348,12 +348,28 @@
         <div class="scatter-hero-header">
             <h2>🌐 3D CodeBalance Space</h2>
             <div class="scatter-legend">
-                <span><span class="legend-dot" style="background:var(--safe)"></span> Safe (0-3)</span>
-                <span><span class="legend-dot" style="background:var(--warn)"></span> Medium (4-6)</span>
-                <span><span class="legend-dot" style="background:var(--danger)"></span> Risky (7-10)</span>
+                <span><span class="legend-dot" style="background:var(--safe)"></span> Safe (0–3)</span>
+                <span><span class="legend-dot" style="background:var(--warn)"></span> Medium (4–6)</span>
+                <span><span class="legend-dot" style="background:var(--danger)"></span> Risky (7–10)</span>
+                <span style="color:var(--text-dim);font-size:10px">· Marker size = Energy · Click a point to
+                    explain</span>
             </div>
         </div>
         <div id="plotly-scatter"></div>
+    </div>
+</section>
+
+<!-- ── Revision Timeline (populated from /api/regen_trace) ── -->
+<section id="timeline-section">
+    <div class="section-title">Multi-Agent Revision Timeline</div>
+    <div class="chart-card" id="timeline-card">
+        <div class="chart-card-title">
+            <span class="dot" style="background:var(--accent)"></span>
+            <span id="timeline-fn-label">No trace loaded — run</span>
+            <code
+                style="font-size:11px;color:var(--accent);margin-left:4px">python faculty_demo.py --log-iterations</code>
+        </div>
+        <div id="timeline-container" style="padding:8px 0"></div>
     </div>
 </section>
 
@@ -525,10 +541,12 @@
             </tr>`).join('');
     }
 
-    // ── Enhanced 3D scatter with Safety-based color + click-to-modal ──
+    // ── Enhanced 3D scatter with Safety-based color + narrative hover ──
     function render3D(pts) {
         // Color based on Safety score (red-yellow-green gradient)
         const safetyColors = pts.map(p => p.safety);
+        // Marker size proportional to Energy (range 4-12)
+        const markerSizes = pts.map(p => 4 + (p.energy / 10) * 8);
 
         Plotly.newPlot('plotly-scatter', [{
             type: 'scatter3d', mode: 'markers',
@@ -536,31 +554,40 @@
             y: pts.map(p => p.debt),
             z: pts.map(p => p.safety),
             text: pts.map(p => `${p.name.split('.').pop()}`),
-            customdata: pts.map(p => [p.name, p.file, p.energy, p.debt, p.safety]),
-            hovertemplate: '<b>%{text}</b><br>' +
-                'File: %{customdata[1]}<br>' +
-                'Energy: %{customdata[2]}<br>' +
-                'Debt: %{customdata[3]}<br>' +
-                'Safety: %{customdata[4]}<extra></extra>',
+            customdata: pts.map(p => [
+                p.name,                         // [0] qualified name
+                p.file.split('/').slice(-2).join('/'),  // [1] short path
+                p.energy,                       // [2]
+                p.debt,                         // [3]
+                p.safety,                       // [4]
+                p.grade || '?',              // [5] A-F grade
+                p.risk_label || 'Unknown',      // [6] narrative label
+            ]),
+            hovertemplate:
+                '<b>%{text}</b>  · <i>%{customdata[6]}</i>  Grade [%{customdata[5]}]<br>' +
+                '⚡ Energy: %{customdata[2]}<br>' +
+                '🔧 Debt: %{customdata[3]}<br>' +
+                '🛡 Safety: %{customdata[4]}<br>' +
+                '📁 …/%{customdata[1]}<extra></extra>',
             marker: {
-                size: 5,
+                size: markerSizes,
                 color: safetyColors,
                 colorscale: [[0, '#34d399'], [0.3, '#34d399'], [0.5, '#fbbf24'], [0.7, '#f87171'], [1, '#dc2626']],
-                opacity: 0.9,
+                opacity: 0.88,
                 colorbar: {
                     title: { text: 'Safety', font: { color: '#cdd6f4' } },
                     tickfont: { color: '#6c7086' },
                     len: 0.6
                 },
-                line: { width: 0.5, color: 'rgba(255,255,255,.1)' }
+                line: { width: 0.5, color: 'rgba(255,255,255,.12)' }
             }
         }], {
             paper_bgcolor: '#181825', plot_bgcolor: '#181825',
             font: { color: '#cdd6f4', family: 'Inter' },
             scene: {
-                xaxis: { title: 'Energy', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                yaxis: { title: 'Debt', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                zaxis: { title: 'Safety', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
+                xaxis: { title: '⚡ Energy', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
+                yaxis: { title: '🔧 Debt', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
+                zaxis: { title: '🛡 Safety', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
                 bgcolor: '#181825',
             },
             margin: { l: 0, r: 0, t: 0, b: 0 },
@@ -574,6 +601,71 @@
                 _openModal(funcName);
             }
         });
+    }
+
+    // ── Revision Timeline renderer ───────────────────────────────────────
+    async function loadRevisionTimeline() {
+        const container = _$('timeline-container');
+        const label = _$('timeline-fn-label');
+        if (!container) return;
+        try {
+            const trace = await _api('/api/regen_trace');
+            if (trace.error) { return; }  // silently hide if no trace yet
+
+            const iters = trace.iterations || [];
+            const fnShort = (trace.function || '').split('.').pop();
+            label.textContent = `${fnShort}  (${trace.total_iterations} iteration${trace.total_iterations !== 1 ? 's' : ''}, SOP: ${trace.sop_variant || 'default'})`;
+
+            const verdictColor = { PASS: '#34d399', REVISE: '#fbbf24', FAIL: '#f87171' };
+            const verdictIcon = { PASS: '✓', REVISE: '⟳', FAIL: '✗' };
+
+            // SVG timeline
+            const W = container.offsetWidth || 600;
+            const stepW = Math.min(120, (W - 40) / Math.max(iters.length, 1));
+            const svgH = 90;
+
+            let svg = `<svg width="100%" height="${svgH}" viewBox="0 0 ${W} ${svgH}" xmlns="http://www.w3.org/2000/svg" style="font-family:Inter,sans-serif">`;
+
+            // Connector line
+            if (iters.length > 1) {
+                const x1 = 30 + stepW * 0.5;
+                const x2 = 30 + stepW * (iters.length - 0.5);
+                svg += `<line x1="${x1}" y1="28" x2="${x2}" y2="28" stroke="#313244" stroke-width="2"/>`;
+            }
+
+            iters.forEach((it, i) => {
+                const cx = 30 + stepW * i + stepW * 0.5;
+                const color = verdictColor[it.verdict] || '#6c7086';
+                const icon = verdictIcon[it.verdict] || '?';
+
+                // Circle node
+                svg += `<circle cx="${cx}" cy="28" r="14" fill="${color}22" stroke="${color}" stroke-width="2"/>`;
+                svg += `<text x="${cx}" y="33" text-anchor="middle" fill="${color}" font-size="13" font-weight="bold">${icon}</text>`;
+
+                // Iteration number
+                svg += `<text x="${cx}" y="55" text-anchor="middle" fill="#6c7086" font-size="10">Iter ${it.iteration}</text>`;
+
+                // Verdict label
+                svg += `<text x="${cx}" y="68" text-anchor="middle" fill="${color}" font-size="9" font-weight="600">${it.verdict}</text>`;
+
+                // Confidence
+                svg += `<text x="${cx}" y="82" text-anchor="middle" fill="#6c7086" font-size="9">${it.confidence}%</text>`;
+            });
+
+            // Fidelity badge at end
+            if (trace.fidelity != null) {
+                const fColor = trace.fidelity >= 0.7 ? '#34d399' : '#fbbf24';
+                const fPct = Math.round(trace.fidelity * 100);
+                svg += `<text x="${W - 10}" y="18" text-anchor="end" fill="${fColor}" font-size="11" font-weight="600">Fidelity ${fPct}%</text>`;
+            }
+
+            svg += `</svg>`;
+            container.innerHTML = svg;
+        } catch (_) {
+            // No trace available — hide the section
+            const sec = _$('timeline-section');
+            if (sec) sec.style.display = 'none';
+        }
     }
 
     // ── Click handler for function names in tables ──
@@ -616,6 +708,9 @@
 
             // 3D scatter (HERO)
             render3D(scatter);
+
+            // Revision timeline (best-effort — hides itself if no trace)
+            await loadRevisionTimeline();
 
             // Top-risk tables
             fillTable('table-energy', topEnergy, 'energy');

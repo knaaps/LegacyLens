@@ -252,7 +252,7 @@
 
     function buildTreemap(moduleSummary) {
         const container = _$('treemap-container');
-        const width = container.clientWidth;
+        const width = container.clientWidth || container.getBoundingClientRect().width || 900;
         const height = container.clientHeight || 520;
 
         const data = {
@@ -375,11 +375,16 @@
             const summary = await _api('/api/summary');
             if (summary.error) throw new Error(summary.error);
 
-            buildTreemap(summary.module_summary);
-
             _$('loading').style.display = 'none';
             _$('app-root').style.display = 'flex';
             _$('app-root').style.flexDirection = 'column';
+
+            // Double rAF ensures the browser has painted after display:flex
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    buildTreemap(summary.module_summary);
+                });
+            });
             await _initNav();
         } catch (err) {
             _$('loading').style.display = 'none';

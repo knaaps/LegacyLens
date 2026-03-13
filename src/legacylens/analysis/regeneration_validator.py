@@ -213,15 +213,65 @@ CODE:"""
 
     raw = llm_generate(prompt=prompt, model=model, temperature=0.2)
 
-    # Strip markdown code fences if the LLM wraps the output
-    code = raw.strip()
-    if code.startswith("```"):
-        lines = code.split("\n")
-        # Remove first and last lines (the fences)
-        lines = [l for l in lines if not l.strip().startswith("```")]
-        code = "\n".join(lines)
-
+    code = _extract_code_from_response(raw, language)
     return code.strip()
+
+
+def _extract_code_from_response(raw: str, language: str) -> str:
+    """Extract clean code from a potentially prose-contaminated LLM response.
+
+    The regeneration LLM occasionally wraps its output in markdown, includes
+    an explanatory preamble, or returns the explanation instead of code.
+    We use a progressive extraction strategy:
+
+    1. If the whole response looks like code (starts with annotation or keyword)
+       → return as-is after stripping whitespace.
+    2. If there are markdown code fences → extract the first fenced block.
+    3. If there are Java/Python method signatures in the text → extract from
+       the first one to the end (handles "Here is the code:\n@GetMapping...").
+    4. Return whatever we found, or the raw stripped text as last resort.
+    """
+    import re
+
+    text = raw.strip()
+
+    # Stage 1: Whole response looks like raw code already
+    code_starters = (
+        "@", "public ", "private ", "protected ", "static ",
+        "def ", "class ", "import ", "package ",
+    )
+    first_line = text.split("\n")[0].lstrip()
+    if any(first_line.startswith(s) for s in code_starters):
+        return text
+
+    # Stage 2: Markdown code fence extraction  ```java ... ``` or ``` ... ```
+    fence_pattern = re.compile(
+        r'```(?:java|python|py|kotlin)?\s*\n(.*?)```',
+        re.DOTALL | re.IGNORECASE,
+    )
+    fences = fence_pattern.findall(text)
+    if fences:
+        # Prefer the largest block (most likely to be the full method)
+        return max(fences, key=len).strip()
+
+    # Stage 3: Find first Java/Python code-like line and take everything from there
+    # This handles "Here is the reconstructed method:\n@GetMapping..."
+    if language == "java":
+        code_start = re.search(
+            r'^(@\w+|public |private |protected |static |void |[A-Z]\w+\s+\w+\s*\()',
+            text, re.MULTILINE,
+        )
+    else:  # python
+        code_start = re.search(
+            r'^(def |class |@\w+|import |from )',
+            text, re.MULTILINE,
+        )
+
+    if code_start:
+        return text[code_start.start():].strip()
+
+    # Stage 4: Last resort — return full text (will score low, that's informative)
+    return text
 
 
 # ---------------------------------------------------------------------------

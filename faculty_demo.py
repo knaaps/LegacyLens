@@ -15,11 +15,13 @@ Usage:
 
 import contextlib
 import io
+import json
 import os
 import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Optional, Tuple
+import argparse
 
 from rich.columns import Columns
 from rich.console import Console
@@ -52,6 +54,9 @@ QUERIES       = [
 ]
 
 console = Console(width=76)
+
+# ── Parsed CLI args (will be set in main()) ────────────────
+_args: argparse.Namespace | None = None
 
 # ── Helpers ────────────────────────────────────────────────
 
@@ -258,11 +263,21 @@ def step_4_verify(ctx: SlicedContext) -> str:
     info.add_row("[dim]Provider:[/dim]",    f"[cyan]{provider}[/cyan]")
     info.add_row("[dim]Max loops:[/dim]",   f"[cyan]{MAX_ITER}[/cyan]")
     info.add_row("[dim]Target:[/dim]",      f"[white]{ctx.target.qualified_name}[/white]")
+
+    # Load SOP if requested
+    sop: dict = {}
+    sop_label = "default"
+    if _args and _args.sop:
+        from legacylens.agents.sop_loader import load_sop
+        sop = load_sop(_args.sop)
+        sop_label = _args.sop
+    info.add_row("[dim]SOP variant:[/dim]", f"[cyan]{sop_label}[/cyan]")
     console.print(info)
     console.print("\n  Running Writer → Critic → Regeneration...\n")
 
     code    = ctx.target.code
     context = ctx.to_context_dict()
+    max_iters = sop.get("max_iterations", MAX_ITER)
 
     console.print("\n[bold]Target Function:[/bold]")
 
@@ -284,10 +299,32 @@ def step_4_verify(ctx: SlicedContext) -> str:
                 max_iterations=MAX_ITER,
                 run_regeneration=True,
                 language="java",
+                sop=sop,
             )
         except Exception as e:
             _die(f"Agent pipeline failed: {e}")
             return code
+
+    # ── Write iteration log ──
+    if _args and getattr(_args, "log_iterations", True) and result.iteration_log:
+        fn_slug = ctx.target.name.replace("/", "_")
+        log_payload = {
+            "function": ctx.target.qualified_name,
+            "sop_variant": sop_label,
+            "verified": result.verified,
+            "total_iterations": result.iterations,
+            "fidelity": result.fidelity_score,
+            "iterations": result.iteration_log,
+        }
+        # Write to results/ (git-tracked)
+        Path("results").mkdir(exist_ok=True)
+        trace_path = Path(f"results/regen_trace_{fn_slug}.json")
+        trace_path.write_text(json.dumps(log_payload, indent=2))
+        # Also copy to ~/.legacylens for dashboard
+        dash_dir = Path.home() / ".legacylens" / "regen_traces"
+        dash_dir.mkdir(parents=True, exist_ok=True)
+        (dash_dir / f"{fn_slug}.json").write_text(json.dumps(log_payload, indent=2))
+        _ok(f"Iteration log → {trace_path}")
 
 
     # ── Explanation preview ──
@@ -400,7 +437,36 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
 # ═══════════════════════════════════════════════════════════
 
 def main() -> None:
-    # Clear accumulated pitfall state to prevent hallucination cascades across demo runs
+    global _args, MAX_ITER
+
+    # ── Argument parsing ──
+    parser = argparse.ArgumentParser(
+        description="LegacyLens Faculty Demo",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--sop",
+        choices=["default", "cautious", "verbose", "fast"],
+        default=None,
+        metavar="VARIANT",
+        help="Agent SOP variant to use (default | cautious | verbose | fast).",
+    )
+    parser.add_argument(
+        "--log-iterations",
+        action="store_true",
+        default=True,
+        dest="log_iterations",
+        help="Write per-iteration JSON trace to results/ and ~/.legacylens/regen_traces/.",
+    )
+    parser.add_argument(
+        "--no-log",
+        action="store_false",
+        dest="log_iterations",
+        help="Disable iteration logging.",
+    )
+    _args = parser.parse_args()
+
+    # ── Clear accumulated pitfall state ──
     pitfalls_path = Path.home() / ".legacylens" / "known_pitfalls.json"
     local_pitfalls = Path("results/known_pitfalls.json")
     if pitfalls_path.exists():
@@ -409,18 +475,20 @@ def main() -> None:
         local_pitfalls.unlink()
 
     provider = os.environ.get("LLM_PROVIDER", "local")
+    sop_label = _args.sop or "default"
 
-    # Welcome Banner (ClaudeCode-style clear box)
+    # Welcome Banner
     console.print()
     welcome_table = Table(box=box.DOUBLE_EDGE, show_header=False, expand=True)
     welcome_table.add_column("info", justify="center")
     welcome_table.add_row("[bold cyan]LegacyLens[/bold cyan]  —  Faculty Demo")
     welcome_table.add_row("[dim]Intelligent Context Slicing + Multi-Agent Verification[/dim]")
-    
+
     config_str = (
         f"[green]Target:[/green] Spring PetClinic   "
         f"[green]LLM:[/green] {provider}   "
-        f"[green]Verification Loops:[/green] {MAX_ITER}"
+        f"[green]Verification Loops:[/green] {MAX_ITER}   "
+        f"[green]SOP:[/green] {sop_label}"
     )
     welcome_table.add_row(config_str)
     console.print(welcome_table)

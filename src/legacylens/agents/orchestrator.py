@@ -12,8 +12,8 @@ Key guarantee: ALWAYS produces an explanation. A FAIL never results in an
 empty or abrupt termination — the highest-confidence draft is returned.
 """
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 from legacylens.agents.writer import write_explanation
 from legacylens.agents.critic import critique_explanation, CritiqueResult
@@ -31,6 +31,7 @@ class VerifiedExplanation:
     critique: Optional[CritiqueResult] = None
     fidelity_score: Optional[float] = None  # 0.0-1.0, from regeneration validation
     fidelity_details: str = ""
+    iteration_log: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def status_string(self) -> str:
@@ -61,6 +62,7 @@ def generate_verified_explanation(
     run_finalizer: bool = False,
     language: str = "java",
     repetition_variant: str | None = None,
+    sop: dict[str, Any] | None = None,
 ) -> VerifiedExplanation:
     """
     Run the Writer→Critic→Finalizer verification pipeline.
@@ -92,9 +94,17 @@ def generate_verified_explanation(
         VerifiedExplanation with final result and metadata.
         Always contains a non-empty explanation string.
     """
+    # Apply SOP overrides (if provided)
+    if sop:
+        max_iterations     = sop.get("max_iterations", max_iterations)
+        repetition_variant = sop.get("repetition_variant", repetition_variant)
+        run_finalizer      = sop.get("run_finalizer", run_finalizer)
+        run_regeneration   = sop.get("run_regeneration", run_regeneration)
+
     explanation = ""
     critique: Optional[CritiqueResult] = None
     iteration = 0
+    _iteration_log: list[dict[str, Any]] = []
 
     revision_context = context.copy()
 
@@ -133,6 +143,16 @@ def generate_verified_explanation(
             best_confidence = critique.confidence
             best_explanation = explanation
             best_critique = critique
+
+        # Log this iteration's state
+        _iteration_log.append({
+            "iteration": iteration,
+            "verdict": critique.verdict,
+            "confidence": critique.confidence,
+            "factual_passed": critique.factual_passed,
+            "completeness_pct": round(critique.completeness_pct, 1),
+            "issues_count": len(critique.issues),
+        })
 
         # PASS → accept immediately
         if critique.verdict == "PASS":
@@ -209,4 +229,5 @@ def generate_verified_explanation(
         critique=critique,
         fidelity_score=fidelity_score,
         fidelity_details=fidelity_details,
+        iteration_log=_iteration_log,
     )

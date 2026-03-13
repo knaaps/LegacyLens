@@ -1,0 +1,44 @@
+# LegacyLens — Agent Standard Operating Procedures (SOPs)
+# ─────────────────────────────────────────────────────────
+# Each variant configures the Writer→Critic→Regen pipeline.
+# Select at runtime:  python faculty_demo.py --sop cautious
+#
+# Unset keys fall back to the pipeline's code defaults.
+# ─────────────────────────────────────────────────────────
+
+default:
+  writer_temperature: 0.3     # Balanced creativity vs. accuracy
+  critic_temperature: 0.0     # Deterministic Critic always
+  max_iterations: 5           # Up to 5 revision loops
+  repetition_variant: null    # No prompt repetition (fastest)
+  run_finalizer: false        # Skip readability polish
+  run_regeneration: true      # Run fidelity check via regen
+
+cautious:
+  # Tighter temperature → less hallucination, fewer iterations
+  # Good for high-stakes demos where accuracy matters most
+  writer_temperature: 0.1
+  critic_temperature: 0.0
+  max_iterations: 3
+  repetition_variant: "simple"   # Light Leviathan repetition
+  run_finalizer: false
+  run_regeneration: true
+
+verbose:
+  # Higher temperature → richer explanations, more loops allowed
+  # Best for exploring creative explanations during research
+  writer_temperature: 0.5
+  critic_temperature: 0.0
+  max_iterations: 7
+  repetition_variant: "verbose"  # Full Leviathan-style repetition
+  run_finalizer: true            # Enable readability polish pass
+  run_regeneration: true
+
+fast:
+  # Minimum-viable pipeline — for quick ablation / smoke-tests
+  writer_temperature: 0.3
+  critic_temperature: 0.0
+  max_iterations: 2
+  repetition_variant: null
+  run_finalizer: false
+  run_regeneration: false        # Skip regen to save time

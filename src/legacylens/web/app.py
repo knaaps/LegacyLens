@@ -36,6 +36,34 @@ def create_app():
             return 'medium'
         return 'high'
 
+    def _risk_label(e, d, s):
+        """Human-readable narrative label for a function's CodeBalance position."""
+        e, d, s = (e or 0), (d or 0), (s or 0)
+        if e >= 7 and d >= 7:
+            return 'Critical Complexity'
+        if e >= 7 and s >= 7:
+            return 'Complex + Unsafe'
+        if e >= 7:
+            return 'High Energy Hotspot'
+        if d >= 7 and s >= 7:
+            return 'Indebted + Risky'
+        if d >= 7:
+            return 'High Debt Hotspot'
+        if s >= 7:
+            return 'Safety Risk'
+        if max(e, d, s) <= 3:
+            return 'Clean Code'
+        return 'Moderate Risk'
+
+    def _grade(e, d, s):
+        """Simplified A-F grade mirroring CodeBalance scorer logic."""
+        worst = max(e or 0, d or 0, s or 0)
+        if worst <= 2:  return 'A'
+        if worst <= 4:  return 'B'
+        if worst <= 6:  return 'C'
+        if worst <= 8:  return 'D'
+        return 'F'
+
     def _hist_bins(values, bins=5):
         """Return counts for equal-width bins from 0 to 10."""
         step = 10 / bins
@@ -189,17 +217,19 @@ def create_app():
         ]
         return jsonify(slim)
 
-    # ── 3-D scatter data ─────────────────────────────────────────────────────
+    # ── 3-D scatter data (enriched with grade + risk_label) ──────────────────
     @app.route('/api/scatter')
     def api_scatter():
         fns = _load_functions()
         return jsonify([
             {
-                'name':   f.get('name', ''),
-                'file':   f.get('file', ''),
-                'energy': f.get('energy', 0),
-                'debt':   f.get('debt', 0),
-                'safety': f.get('safety', 0),
+                'name':       f.get('name', ''),
+                'file':       f.get('file', ''),
+                'energy':     f.get('energy', 0),
+                'debt':       f.get('debt', 0),
+                'safety':     f.get('safety', 0),
+                'grade':      _grade(f.get('energy'), f.get('debt'), f.get('safety')),
+                'risk_label': _risk_label(f.get('energy'), f.get('debt'), f.get('safety')),
             }
             for f in fns
             if f.get('energy') is not None
@@ -252,5 +282,38 @@ def create_app():
     def api_repo_root():
         r = _get_repo_root()
         return jsonify({'root': str(r) if r else None})
+
+    # ── Regen iteration trace ─────────────────────────────────────────────────
+    @app.route('/api/regen_trace')
+    def api_regen_trace():
+        """Return the latest iteration log for a given function name.
+
+        Query params:
+          ?fn=<function_name>   (e.g. processFindForm)
+        Returns the JSON written by faculty_demo.py --log-iterations.
+        """
+        fn = request.args.get('fn', '')
+        traces_dir = Path.home() / '.legacylens' / 'regen_traces'
+
+        if fn:
+            # Look for exact match first, then partial match
+            candidates = list(traces_dir.glob(f'{fn}.json'))
+            if not candidates:
+                candidates = list(traces_dir.glob(f'*{fn}*.json'))
+        else:
+            # Return the most recently modified trace
+            candidates = sorted(
+                traces_dir.glob('*.json'),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+
+        if not candidates or not candidates[0].exists():
+            return jsonify({'error': 'No trace found. Run faculty_demo.py first.'}), 404
+
+        try:
+            return jsonify(json.loads(candidates[0].read_text()))
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     return app
