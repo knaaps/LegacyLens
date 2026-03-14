@@ -315,8 +315,9 @@ def step_4_verify(ctx: SlicedContext) -> str:
                 run_regeneration=True,
                 language="java",
                 sop=sop,
-                qualified_name=ctx.target.qualified_name,
+                function_name=ctx.target.qualified_name,
                 codebase_version=current_fingerprint(),
+                repetition_variant="simple",
             )
         except Exception as e:
             _die(f"Agent pipeline failed: {e}")

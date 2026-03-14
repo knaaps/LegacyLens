@@ -478,7 +478,7 @@ def _compute_verdict(
         return "PASS"
 
     # LLM says PASS with decent confidence + good static checks
-    if llm_passed and confidence >= 70:
+    if llm_passed and confidence >= 70 and factual_passed and completeness_pct >= 60:
         return "PASS"
 
     # High confidence + all static checks passed → still pass

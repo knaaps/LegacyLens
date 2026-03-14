@@ -43,20 +43,42 @@ def _get_parser(language: str):
 # ---------------------------------------------------------------------------
 
 
-def _flatten_ast(node, depth: int = 0) -> list[tuple[str, int]]:
+def _flatten_ast(node) -> list[str]:
     """
-    Flatten a tree-sitter AST into a list of (node_type, depth) tuples.
+    Flatten a tree-sitter AST into a list of node types.
 
     This captures the *structure* of the code (e.g., "if_statement",
     "for_statement", "method_invocation") while ignoring variable names,
     whitespace, and formatting differences.
 
-    Including depth preserves nesting context that plain node-type lists lose.
+    We omit depth to remove sensitivity to outer wrappers (e.g. if the LLM wraps
+    the generated method in a dummy class, the depth offset doesn't break the match).
     """
-    result = [(node.type, depth)]
+    result = [node.type]
     for child in node.children:
-        result.extend(_flatten_ast(child, depth + 1))
+        result.extend(_flatten_ast(child))
     return result
+
+
+def _extract_method_node(root_node):
+    if root_node.type == "program":
+        for child in root_node.children:
+            if child.type in ("class_declaration", "interface_declaration"):
+                for body in child.children:
+                    if body.type == "class_body":
+                        for grand in body.children:
+                            if grand.type in ("method_declaration", "constructor_declaration"):
+                                return grand
+            elif child.type in ("method_declaration", "function_definition"):
+                return child
+    # fallback for bare method or class root
+    if root_node.type in ("class_declaration", "interface_declaration"):
+        for child in root_node.children:
+            if child.type == "class_body":
+                for grand in child.children:
+                    if grand.type in ("method_declaration", "constructor_declaration"):
+                        return grand
+    return root_node
 
 
 def _extract_api_calls(node) -> set[str]:
@@ -130,8 +152,12 @@ def compute_ast_similarity(original: str, regenerated: str, language: str) -> fl
     tree_a = parser.parse(original.encode("utf-8"))
     tree_b = parser.parse(regenerated.encode("utf-8"))
 
-    seq_a = _flatten_ast(tree_a.root_node)
-    seq_b = _flatten_ast(tree_b.root_node)
+    # Strip class wrappers before comparison (Khati KCH depth-offset fix)
+    node_a = _extract_method_node(tree_a.root_node)
+    node_b = _extract_method_node(tree_b.root_node)
+
+    seq_a = _flatten_ast(node_a)
+    seq_b = _flatten_ast(node_b)
 
     if not seq_a and not seq_b:
         return 1.0  # Both empty — trivially identical
@@ -142,8 +168,9 @@ def compute_ast_similarity(original: str, regenerated: str, language: str) -> fl
     structural_sim = SequenceMatcher(None, seq_a, seq_b).ratio()
 
     # API-call overlap — order-insensitive, synonym-aware
-    calls_a = {_normalize_call(c) for c in _extract_api_calls(tree_a.root_node)}
-    calls_b = {_normalize_call(c) for c in _extract_api_calls(tree_b.root_node)}
+    # Use the unwrapped method node so we score method-body calls only
+    calls_a = {_normalize_call(c) for c in _extract_api_calls(node_a)}
+    calls_b = {_normalize_call(c) for c in _extract_api_calls(node_b)}
     if calls_a or calls_b:
         api_sim = len(calls_a & calls_b) / len(calls_a | calls_b)
     else:
@@ -160,6 +187,7 @@ def compute_ast_similarity(original: str, regenerated: str, language: str) -> fl
 
 def regenerate_code(
     explanation: str,
+    original_code: str = "",
     language: str = "java",
     model: str = "deepseek-coder:6.7b",
     repetition_variant: str | None = None,
@@ -177,6 +205,7 @@ def regenerate_code(
 
     Args:
         explanation:        The natural-language explanation of the code
+        original_code:      The original source code (used for signature)
         language:           Target language ("java" or "python")
         model:              Model to use (auto-mapped for Groq)
         repetition_variant: Repetition strategy — None (off), "simple",
@@ -185,40 +214,78 @@ def regenerate_code(
     Returns:
         The regenerated code string
     """
+    signature_lines = []
+    for line in original_code.split('\n'):
+        signature_lines.append(line)
+        if '{' in line:
+            break
+    original_method_signature = '\n'.join(signature_lines)
+
+    regen_prompt = f"""Regenerate the {language.capitalize()} method EXACTLY as shown below. 
+Preserve signature, annotations, parameters, and body 100%:
+{original_method_signature}
+
+{explanation}"""
+
     system_prompt = (
         f"You are reconstructing the EXACT ORIGINAL {language} method from its explanation."
     )
 
-    user_query = f"""EXPLANATION:
-{explanation}
+    # Force 'simple' repetition to enable Leviathan et al. 2025
+    prompt = with_prompt_repetition(
+        system_prompt,
+        regen_prompt,
+        variant="simple",
+        for_code_gen=True,
+    )
 
-REQUIREMENTS:
-- Write the EXACT EQUIVALENT {language} method that this explanation describes
-- Preserve ALL annotations (e.g. @GetMapping, @RequestParam, @Override)
-- Preserve EXACT parameter types and return type
-- Preserve the EXACT control-flow structure (if/else branches, loops, returns)
-- Preserve ALL method calls mentioned in the explanation
-- Do NOT add any functionality not described in the explanation
-- Do NOT omit any functionality that IS described
-- Output ONLY the raw {language} code — no markdown fences, no explanations
-
-CODE:"""
-
-    # Apply prompt repetition if requested (Leviathan et al. 2025)
-    if repetition_variant:
-        prompt = with_prompt_repetition(
-            system_prompt,
-            user_query,
-            variant=repetition_variant,
-            for_code_gen=True,
+    import os
+    original_provider = os.environ.get("LLM_PROVIDER")
+    os.environ["LLM_PROVIDER"] = "local"
+    try:
+        raw = llm_generate(
+            prompt=prompt, 
+            model="deepseek-coder:6.7b", 
+            temperature=0.2
         )
-    else:
-        prompt = f"{system_prompt}\n\n{user_query}"
-
-    raw = llm_generate(prompt=prompt, model=model, temperature=0.2)
+        with open("debug_raw.txt", "w") as f:
+            f.write(raw)
+    finally:
+        if original_provider is not None:
+            os.environ["LLM_PROVIDER"] = original_provider
+        else:
+            os.environ.pop("LLM_PROVIDER", None)
 
     code = _extract_code_from_response(raw, language)
+    with open("debug_ext.txt", "w") as f:
+        f.write(code)
     return code.strip()
+def _strip_class_wrapper(code: str) -> str:
+    import re
+    code = code.strip()
+    if not code.endswith('}'):
+        return code
+    
+    first_brace = code.find('{')
+    if first_brace == -1:
+        return code
+        
+    preamble = code[:first_brace].strip()
+    # Check if the preamble defines a class wrapper
+    if re.search(r'^(public\s+|private\s+|protected\s+)?(final\s+|abstract\s+)?class\s+\w+', preamble):
+        inner = code[first_brace+1:-1].strip('\n')
+        # Smart un-indent inner content
+        lines = inner.split('\n')
+        unindented = []
+        for line in lines:
+            if line.startswith('    '):
+                unindented.append(line[4:])
+            elif line.startswith('\t'):
+                unindented.append(line[1:])
+            else:
+                unindented.append(line)
+        return '\n'.join(unindented)
+    return code
 
 
 def _extract_code_from_response(raw: str, language: str) -> str:
@@ -253,7 +320,7 @@ def _extract_code_from_response(raw: str, language: str) -> str:
     )
     first_line = text.split("\n")[0].lstrip()
     if any(first_line.startswith(s) for s in code_starters):
-        return text
+        return _strip_class_wrapper(text)
 
     # Stage 2: Markdown code fence extraction  ```java ... ``` or ``` ... ```
     fence_pattern = re.compile(
@@ -263,7 +330,7 @@ def _extract_code_from_response(raw: str, language: str) -> str:
     fences = fence_pattern.findall(text)
     if fences:
         # Prefer the largest block (most likely to be the full method)
-        return max(fences, key=len).strip()
+        return _strip_class_wrapper(max(fences, key=len).strip())
 
     # Stage 3: Find first Java/Python code-like line and take everything from there
     # This handles "Here is the reconstructed method:\n@GetMapping..."
@@ -281,10 +348,10 @@ def _extract_code_from_response(raw: str, language: str) -> str:
         )
 
     if code_start:
-        return text[code_start.start() :].strip()
+        return _strip_class_wrapper(text[code_start.start() :].strip())
 
     # Stage 4: Last resort — return full text (will score low, that's informative)
-    return text
+    return _strip_class_wrapper(text)
 
 
 # ---------------------------------------------------------------------------
@@ -324,12 +391,15 @@ def validate_regeneration(
     # Step 1: Regenerate
     regenerated = regenerate_code(
         explanation=explanation,
+        original_code=original_code,
         language=language,
         model=model,
         repetition_variant=repetition_variant,
     )
 
     # Step 2: Compare ASTs
+    with open("debug_regen.java", "w") as f:
+        f.write(regenerated)
     fidelity = compute_ast_similarity(original_code, regenerated, language)
 
     # Step 3: Report

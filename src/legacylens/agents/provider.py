@@ -130,6 +130,11 @@ def llm_generate(
     provider = os.environ.get("LLM_PROVIDER", "local").lower()
     resolved_model = _resolve_model(model, provider)
 
+    print("\n" + "="*80)
+    print("DEBUG: FIRST 250 CHARS OF PROMPT SENT TO LLM:")
+    print(prompt[:250])
+    print("="*80 + "\n")
+
     if provider == "groq":
         return _call_groq(resolved_model, prompt, temperature)
     else:
