@@ -23,7 +23,6 @@ from typing import Literal
 from legacylens.agents.provider import llm_generate
 from legacylens.analysis.codebalance import SAFETY_PATTERNS
 
-
 # ---------------------------------------------------------------------------
 # Verdict type — three-state: PASS, FAIL, or REVISE (try again)
 # ---------------------------------------------------------------------------
@@ -34,6 +33,7 @@ Verdict = Literal["PASS", "FAIL", "REVISE"]
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CritiqueResult:
@@ -90,8 +90,13 @@ class CritiqueResult:
         parts = []
 
         # Hallucination issues — factual mismatches
-        halluc = [i for i in self.issues if "not found in code" in i.lower()
-                  or "hallucin" in i.lower() or "invented" in i.lower()]
+        halluc = [
+            i
+            for i in self.issues
+            if "not found in code" in i.lower()
+            or "hallucin" in i.lower()
+            or "invented" in i.lower()
+        ]
         if halluc or not self.factual_passed:
             parts.append(
                 "HALLUCINATION FIX: "
@@ -103,12 +108,15 @@ class CritiqueResult:
         if missing or self.completeness_pct < 80:
             parts.append(
                 f"COMPLETENESS GAP ({self.completeness_pct:.0f}%): "
-                + (", ".join(missing) if missing else "Expand coverage of params/returns/side-effects.")
+                + (
+                    ", ".join(missing)
+                    if missing
+                    else "Expand coverage of params/returns/side-effects."
+                )
             )
 
         # Safety risks not mentioned
-        safety = [i for i in self.issues if "unmentioned risk" in i.lower()
-                  or "risk" in i.lower()]
+        safety = [i for i in self.issues if "unmentioned risk" in i.lower() or "risk" in i.lower()]
         if safety:
             parts.append("SAFETY RISKS TO ADDRESS: " + ", ".join(safety))
 
@@ -144,17 +152,18 @@ def clear_critique_cache() -> None:
 # Check 1: Factual accuracy (static — no LLM needed)
 # ---------------------------------------------------------------------------
 
+
 def _split_camel_case(identifier: str) -> set[str]:
     """Helper: Split camelCase/PascalCase string into lowercase words."""
     # 1. Split snake_case if present
-    parts = identifier.replace('_', ' ').split()
+    parts = identifier.replace("_", " ").split()
     words = set()
 
     for part in parts:
         # 2. Insert space key transitions to handle CamelCase and acronyms
         #    e.g. "XMLParser" -> "XML Parser", "camelCase" -> "camel Case"
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1 \2', part)
-        s2 = re.sub('([a-z0-9])([A-Z])', r'\1 \2', s1)
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1 \2", part)
+        s2 = re.sub("([a-z0-9])([A-Z])", r"\1 \2", s1)
         words.update(s2.lower().split())
 
     return words
@@ -180,7 +189,7 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     issues = []
 
     # Extract identifiers from code (simple word-boundary matching)
-    code_identifiers = set(re.findall(r'\b([a-zA-Z_]\w+)\b', code))
+    code_identifiers = set(re.findall(r"\b([a-zA-Z_]\w+)\b", code))
 
     # Build a lowercase set and a set of camelCase sub-words
     sub_ids = set()
@@ -192,22 +201,46 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     explanation_refs = set()
 
     # Backtick-wrapped references: `functionName`
-    explanation_refs.update(re.findall(r'`(\w+)`', explanation))
+    explanation_refs.update(re.findall(r"`(\w+)`", explanation))
 
     # camelCase or PascalCase words (likely code references)
-    explanation_refs.update(re.findall(r'\b([a-z]+[A-Z]\w+)\b', explanation))
+    explanation_refs.update(re.findall(r"\b([a-z]+[A-Z]\w+)\b", explanation))
 
     # snake_case words (likely code references)
-    explanation_refs.update(re.findall(r'\b(\w+_\w+)\b', explanation))
+    explanation_refs.update(re.findall(r"\b(\w+_\w+)\b", explanation))
 
     # Allowlist: common English compound/programming terms that are NOT hallucinations
     common_words = {
-        "the", "and", "for", "this", "that", "with", "from", "have", "been",
-        "lastName", "firstName", "totalElements", "defaultValue",
-        "requestParam", "bindingResult", "notFound", "isEmpty",
-        "side_effects", "error_handling", "return_value", "last_name",
-        "step_by", "line_count", "pageSize", "pageNumber", "totalPages",
-        "getMapping", "postMapping", "requestMapping", "pathVariable",
+        "the",
+        "and",
+        "for",
+        "this",
+        "that",
+        "with",
+        "from",
+        "have",
+        "been",
+        "lastName",
+        "firstName",
+        "totalElements",
+        "defaultValue",
+        "requestParam",
+        "bindingResult",
+        "notFound",
+        "isEmpty",
+        "side_effects",
+        "error_handling",
+        "return_value",
+        "last_name",
+        "step_by",
+        "line_count",
+        "pageSize",
+        "pageNumber",
+        "totalPages",
+        "getMapping",
+        "postMapping",
+        "requestMapping",
+        "pathVariable",
     }
     common_words_lower = {w.lower() for w in common_words}
 
@@ -245,18 +278,17 @@ def _check_factual_accuracy(code: str, explanation: str) -> tuple[bool, list[str
     return passed, issues
 
 
-
 # ---------------------------------------------------------------------------
 # Check 2: Completeness (must-cover questions)
 # ---------------------------------------------------------------------------
 
 # These questions represent the minimum an explanation should cover.
 MUST_COVER_QUESTIONS = [
-    ("parameters", r'\b(param|argument|input|takes|accepts|receives)\b'),
-    ("return value", r'\b(return|output|result|produces|yields)\b'),
-    ("purpose", r'\b(purpose|does|handles|processes|responsible|performs)\b'),
-    ("error handling", r'\b(error|exception|catch|throw|fail|invalid)\b'),
-    ("side effects", r'\b(modifies|updates|saves|writes|deletes|sends|calls|invokes)\b'),
+    ("parameters", r"\b(param|argument|input|takes|accepts|receives)\b"),
+    ("return value", r"\b(return|output|result|produces|yields)\b"),
+    ("purpose", r"\b(purpose|does|handles|processes|responsible|performs)\b"),
+    ("error handling", r"\b(error|exception|catch|throw|fail|invalid)\b"),
+    ("side effects", r"\b(modifies|updates|saves|writes|deletes|sends|calls|invokes)\b"),
 ]
 
 
@@ -288,6 +320,7 @@ def _check_completeness(explanation: str) -> tuple[float, list[str]]:
 # ---------------------------------------------------------------------------
 # Check 3: Risk awareness (reuse SAFETY_PATTERNS from codebalance.py)
 # ---------------------------------------------------------------------------
+
 
 def _check_risk_awareness(code: str, explanation: str) -> tuple[list[str], list[str]]:
     """
@@ -339,8 +372,11 @@ def _check_risk_awareness(code: str, explanation: str) -> tuple[list[str], list[
 # Main LLM-based critique (requests structured JSON output)
 # ---------------------------------------------------------------------------
 
+
 def _llm_critique(
-    code: str, explanation: str, model: str,
+    code: str,
+    explanation: str,
+    model: str,
     repetition_variant: str | None = None,
 ) -> tuple[bool, int, list[str], str]:
     """
@@ -378,9 +414,8 @@ SUGGESTIONS: [how to improve, or "none needed"]"""
     # Apply prompt repetition if requested (Leviathan et al. 2025)
     if repetition_variant:
         from legacylens.agents.utils import with_prompt_repetition
-        prompt = with_prompt_repetition(
-            system_prompt, user_query, variant=repetition_variant
-        )
+
+        prompt = with_prompt_repetition(system_prompt, user_query, variant=repetition_variant)
     else:
         prompt = f"{system_prompt}\n\n{user_query}"
 
@@ -424,6 +459,7 @@ def _parse_critique_response(response: str) -> tuple[bool, int, list[str], str]:
 # Verdict logic — three-outcome (PASS / FAIL / REVISE)
 # ---------------------------------------------------------------------------
 
+
 def _compute_verdict(
     llm_passed: bool,
     confidence: int,
@@ -461,6 +497,7 @@ def _compute_verdict(
 # ---------------------------------------------------------------------------
 # Public API — runs all checks sequentially
 # ---------------------------------------------------------------------------
+
 
 def critique_explanation(
     code: str,
@@ -513,7 +550,9 @@ def critique_explanation(
     # --- LLM verification ---
     try:
         llm_passed, confidence, llm_issues, suggestions = _llm_critique(
-            code, explanation, model,
+            code,
+            explanation,
+            model,
             repetition_variant=repetition_variant,
         )
         all_issues.extend(llm_issues)

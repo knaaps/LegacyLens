@@ -9,12 +9,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from legacylens.analysis.codebalance import score_code, CodeBalanceScore
-from legacylens.analysis.hint_enricher import enrich_hints, HintResult
 from legacylens.analysis.call_graph import CallGraph
+from legacylens.analysis.codebalance import CodeBalanceScore, score_code
 from legacylens.analysis.context_slicer import (
-    slice_context, build_hybrid_context, TOKEN_BUDGET, _estimate_tokens
+    TOKEN_BUDGET,
+    _estimate_tokens,
+    build_hybrid_context,
+    slice_context,
 )
+from legacylens.analysis.hint_enricher import HintResult, enrich_hints
 
 _pass = 0
 _fail = 0
@@ -32,6 +35,7 @@ def _assert(cond: bool, msg: str):
 # ---------------------------------------------------------------------------
 # CodeBalance tests
 # ---------------------------------------------------------------------------
+
 
 def test_codebalance_basic():
     """Clean single-line function scores A."""
@@ -89,6 +93,7 @@ def test_codebalance_sql_safety():
 # HintEnricher tests
 # ---------------------------------------------------------------------------
 
+
 def test_hint_threading():
     """synchronized keyword detected as concurrency pattern."""
     result = enrich_hints("synchronized void transfer() { balance -= amount; }")
@@ -119,7 +124,9 @@ def test_hint_eval_risk():
 def test_hint_clean_code():
     """Simple getter has no patterns."""
     result = enrich_hints("public String getName() { return this.name; }")
-    _assert(len(result.patterns) == 0, f"clean getter should have no patterns, got {result.patterns}")
+    _assert(
+        len(result.patterns) == 0, f"clean getter should have no patterns, got {result.patterns}"
+    )
 
 
 def test_hint_prompt_section_empty():
@@ -146,19 +153,46 @@ def test_hint_redirect():
 # ContextSlicer / Token counting tests
 # ---------------------------------------------------------------------------
 
+
 def _make_graph() -> CallGraph:
     """Build a small 4-function PetClinic-like call graph."""
     g = CallGraph()
-    g.add_function("processForm", "PetController.processForm", "PetController.java",
-                   "void processForm(@Valid Pet pet, BindingResult result) { save(pet); }",
-                   calls=["save", "validate"], field_reads=["owners"], field_writes=[])
-    g.add_function("save", "PetRepository.save", "PetRepository.java",
-                   "void save(Pet pet) { db.persist(pet); }", calls=[], field_reads=[], field_writes=["db"])
-    g.add_function("validate", "Validator.validate", "Validator.java",
-                   "boolean validate(Pet pet) { return pet != null; }", calls=[], field_reads=[], field_writes=[])
-    g.add_function("initForm", "PetController.initForm", "PetController.java",
-                   "void initForm() { owners.findAll(); }", calls=["processForm"],
-                   field_reads=["owners"], field_writes=[])
+    g.add_function(
+        "processForm",
+        "PetController.processForm",
+        "PetController.java",
+        "void processForm(@Valid Pet pet, BindingResult result) { save(pet); }",
+        calls=["save", "validate"],
+        field_reads=["owners"],
+        field_writes=[],
+    )
+    g.add_function(
+        "save",
+        "PetRepository.save",
+        "PetRepository.java",
+        "void save(Pet pet) { db.persist(pet); }",
+        calls=[],
+        field_reads=[],
+        field_writes=["db"],
+    )
+    g.add_function(
+        "validate",
+        "Validator.validate",
+        "Validator.java",
+        "boolean validate(Pet pet) { return pet != null; }",
+        calls=[],
+        field_reads=[],
+        field_writes=[],
+    )
+    g.add_function(
+        "initForm",
+        "PetController.initForm",
+        "PetController.java",
+        "void initForm() { owners.findAll(); }",
+        calls=["processForm"],
+        field_reads=["owners"],
+        field_writes=[],
+    )
     return g
 
 
@@ -188,16 +222,18 @@ def test_slice_data_coupling():
     """initForm and processForm share 'owners' field — data coupling."""
     graph = _make_graph()
     ctx = slice_context("processForm", graph)
-    coupled_names = [c.name for c in ctx.data_coupled]
-    # initForm reads 'owners' too, processForm reads 'owners', they are coupled
-    # initForm is already in callers so may not appear in data_coupled (deduplicated)
+    # initForm reads 'owners' too, processForm reads 'owners', they are coupled.
+    # initForm is already in callers so may not appear in data_coupled (deduplicated).
     _assert(ctx is not None, "slice returned None")  # basic guard
 
 
 def test_token_estimate():
     """_estimate_tokens estimates ~4 chars/token."""
     text = "a" * 400
-    _assert(_estimate_tokens(text) == 100, f"400 chars should be ~100 tokens, got {_estimate_tokens(text)}")
+    _assert(
+        _estimate_tokens(text) == 100,
+        f"400 chars should be ~100 tokens, got {_estimate_tokens(text)}",
+    )
 
 
 def test_token_budget_constant():
@@ -210,14 +246,26 @@ def test_build_hybrid_context_graph():
     """build_hybrid_context uses graph when available."""
     graph = _make_graph()
     ctx = build_hybrid_context("processForm", graph, [])
-    _assert(ctx.get("source") == "deterministic", f"expected deterministic, got {ctx.get('source')}")
+    _assert(
+        ctx.get("source") == "deterministic", f"expected deterministic, got {ctx.get('source')}"
+    )
 
 
 def test_build_hybrid_context_rag_fallback():
     """build_hybrid_context falls back to RAG when graph has no match."""
     graph = CallGraph()  # empty
-    rag = [{"code": "void foo() {}", "metadata": {"qualified_name": "Foo.foo", "file_path": "Foo.java",
-                                                    "complexity": 1, "line_count": 3, "calls": ""}}]
+    rag = [
+        {
+            "code": "void foo() {}",
+            "metadata": {
+                "qualified_name": "Foo.foo",
+                "file_path": "Foo.java",
+                "complexity": 1,
+                "line_count": 3,
+                "calls": "",
+            },
+        }
+    ]
     ctx = build_hybrid_context("foo", graph, rag)
     _assert(ctx.get("source") == "rag", f"expected rag fallback, got {ctx.get('source')}")
 

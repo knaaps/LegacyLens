@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from legacylens.agents.utils import with_prompt_repetition
 
-
 SYSTEM = "You are a code expert."
 QUERY = "Explain this function."
 FULL = f"{SYSTEM}\n\n{QUERY}"
@@ -27,10 +26,7 @@ def test_verbose_variant():
 
 def test_x3_variant():
     result = with_prompt_repetition(SYSTEM, QUERY, variant="x3")
-    expected = (
-        f"{FULL}\n\nLet me repeat that:\n{FULL}"
-        f"\n\nOne more time to ensure accuracy:\n{FULL}"
-    )
+    expected = f"{FULL}\n\nLet me repeat that:\n{FULL}\n\nOne more time to ensure accuracy:\n{FULL}"
     assert result == expected
 
 

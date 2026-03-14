@@ -26,9 +26,11 @@ def _get_parser(language: str):
 
         if language == "python":
             import tree_sitter_python as tspython
+
             _parsers["python"] = Parser(Language(tspython.language()))
         elif language == "java":
             import tree_sitter_java as tsjava
+
             _parsers["java"] = Parser(Language(tsjava.language()))
         else:
             raise ValueError(f"Unsupported language: {language}")
@@ -39,6 +41,7 @@ def _get_parser(language: str):
 # ---------------------------------------------------------------------------
 # AST similarity — compare tree structures, not text
 # ---------------------------------------------------------------------------
+
 
 def _flatten_ast(node, depth: int = 0) -> list[tuple[str, int]]:
     """
@@ -92,7 +95,7 @@ def _normalize_call(name: str) -> str:
     import re as _re
 
     # Strip get/set prefix if remainder is at least 3 chars
-    stripped = _re.sub(r'^(get|set)(?=[A-Z]\w{2,})', '', name)
+    stripped = _re.sub(r"^(get|set)(?=[A-Z]\w{2,})", "", name)
     lower = stripped.lower()
 
     for group in _CALL_SYNONYMS:
@@ -154,6 +157,7 @@ def compute_ast_similarity(original: str, regenerated: str, language: str) -> fl
 # Code regeneration — ask the LLM to write code from an explanation
 # ---------------------------------------------------------------------------
 
+
 def regenerate_code(
     explanation: str,
     language: str = "java",
@@ -182,8 +186,7 @@ def regenerate_code(
         The regenerated code string
     """
     system_prompt = (
-        f"You are reconstructing the EXACT ORIGINAL {language} method "
-        f"from its explanation."
+        f"You are reconstructing the EXACT ORIGINAL {language} method from its explanation."
     )
 
     user_query = f"""EXPLANATION:
@@ -204,7 +207,8 @@ CODE:"""
     # Apply prompt repetition if requested (Leviathan et al. 2025)
     if repetition_variant:
         prompt = with_prompt_repetition(
-            system_prompt, user_query,
+            system_prompt,
+            user_query,
             variant=repetition_variant,
             for_code_gen=True,
         )
@@ -237,8 +241,15 @@ def _extract_code_from_response(raw: str, language: str) -> str:
 
     # Stage 1: Whole response looks like raw code already
     code_starters = (
-        "@", "public ", "private ", "protected ", "static ",
-        "def ", "class ", "import ", "package ",
+        "@",
+        "public ",
+        "private ",
+        "protected ",
+        "static ",
+        "def ",
+        "class ",
+        "import ",
+        "package ",
     )
     first_line = text.split("\n")[0].lstrip()
     if any(first_line.startswith(s) for s in code_starters):
@@ -246,7 +257,7 @@ def _extract_code_from_response(raw: str, language: str) -> str:
 
     # Stage 2: Markdown code fence extraction  ```java ... ``` or ``` ... ```
     fence_pattern = re.compile(
-        r'```(?:java|python|py|kotlin)?\s*\n(.*?)```',
+        r"```(?:java|python|py|kotlin)?\s*\n(.*?)```",
         re.DOTALL | re.IGNORECASE,
     )
     fences = fence_pattern.findall(text)
@@ -258,17 +269,19 @@ def _extract_code_from_response(raw: str, language: str) -> str:
     # This handles "Here is the reconstructed method:\n@GetMapping..."
     if language == "java":
         code_start = re.search(
-            r'^(@\w+|public |private |protected |static |void |[A-Z]\w+\s+\w+\s*\()',
-            text, re.MULTILINE,
+            r"^(@\w+|public |private |protected |static |void |[A-Z]\w+\s+\w+\s*\()",
+            text,
+            re.MULTILINE,
         )
     else:  # python
         code_start = re.search(
-            r'^(def |class |@\w+|import |from )',
-            text, re.MULTILINE,
+            r"^(def |class |@\w+|import |from )",
+            text,
+            re.MULTILINE,
         )
 
     if code_start:
-        return text[code_start.start():].strip()
+        return text[code_start.start() :].strip()
 
     # Stage 4: Last resort — return full text (will score low, that's informative)
     return text
@@ -277,6 +290,7 @@ def _extract_code_from_response(raw: str, language: str) -> str:
 # ---------------------------------------------------------------------------
 # Public API — end-to-end validation
 # ---------------------------------------------------------------------------
+
 
 def validate_regeneration(
     original_code: str,

@@ -15,9 +15,9 @@ empty or abrupt termination — the highest-confidence draft is returned.
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from legacylens.agents.writer import write_explanation
-from legacylens.agents.critic import critique_explanation, CritiqueResult
+from legacylens.agents.critic import CritiqueResult, critique_explanation
 from legacylens.agents.finalizer import finalize_explanation
+from legacylens.agents.writer import write_explanation
 
 
 @dataclass
@@ -103,10 +103,10 @@ def generate_verified_explanation(
     """
     # Apply SOP overrides (if provided)
     if sop:
-        max_iterations     = sop.get("max_iterations", max_iterations)
+        max_iterations = sop.get("max_iterations", max_iterations)
         repetition_variant = sop.get("repetition_variant", repetition_variant)
-        run_finalizer      = sop.get("run_finalizer", run_finalizer)
-        run_regeneration   = sop.get("run_regeneration", run_regeneration)
+        run_finalizer = sop.get("run_finalizer", run_finalizer)
+        run_regeneration = sop.get("run_regeneration", run_regeneration)
 
     explanation = ""
     critique: Optional[CritiqueResult] = None
@@ -152,14 +152,16 @@ def generate_verified_explanation(
             best_critique = critique
 
         # Log this iteration's state
-        _iteration_log.append({
-            "iteration": iteration,
-            "verdict": critique.verdict,
-            "confidence": critique.confidence,
-            "factual_passed": critique.factual_passed,
-            "completeness_pct": round(critique.completeness_pct, 1),
-            "issues_count": len(critique.issues),
-        })
+        _iteration_log.append(
+            {
+                "iteration": iteration,
+                "verdict": critique.verdict,
+                "confidence": critique.confidence,
+                "factual_passed": critique.factual_passed,
+                "completeness_pct": round(critique.completeness_pct, 1),
+                "issues_count": len(critique.issues),
+            }
+        )
 
         # PASS → accept immediately
         if critique.verdict == "PASS":
@@ -180,6 +182,7 @@ def generate_verified_explanation(
             # Record failure patterns (MAML-style meta-learning)
             try:
                 from legacylens.agents.utils import record_critique_pitfalls
+
                 record_critique_pitfalls(critique)
             except Exception:
                 pass  # Non-critical — don't break the loop
@@ -231,21 +234,25 @@ def generate_verified_explanation(
     # --- Optional: Persistence (Cache high-confidence PASS) ---
     if function_name and is_verified and fidelity_score:
         from legacylens.agents.explanation_store import FIDELITY_THRESHOLD, ExplanationStore
+
         if fidelity_score >= FIDELITY_THRESHOLD:
             try:
                 store = ExplanationStore()
                 store.upsert(
                     fn_qualified_name=function_name,
                     text=best_explanation,  # best draft (writer or best fallback)
-                    markdown=explanation,   # final (potentially polished) version
+                    markdown=explanation,  # final (potentially polished) version
                     confidence=float(critique.confidence) if critique else 0.0,
                     fidelity=float(fidelity_score),
-                    codebase_version=codebase_version
+                    codebase_version=codebase_version,
                 )
             except Exception as e:
                 # Cache failure should not crash the main pipeline
                 import logging
-                logging.getLogger(__name__).warning("Orchestrator: Failed to persist explanation: %s", e)
+
+                logging.getLogger(__name__).warning(
+                    "Orchestrator: Failed to persist explanation: %s", e
+                )
 
     return VerifiedExplanation(
         explanation=explanation,

@@ -15,11 +15,11 @@ Output:
     results/codebalance_3d.html  — self-contained interactive HTML
 """
 
-import sys
-import json
 import argparse
-from pathlib import Path
+import json
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -31,14 +31,21 @@ from legacylens.analysis.codebalance import score_code
 # ---------------------------------------------------------------------------
 
 SAMPLE_FUNCTIONS = [
-    {"name": "initCreationForm",    "category": "Simple View",     "code": """
+    {
+        "name": "initCreationForm",
+        "category": "Simple View",
+        "code": """
     @GetMapping("/owners/new")
     public String initCreationForm(Map<String, Object> model) {
         Owner owner = new Owner();
         model.put("owner", owner);
         return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-    }"""},
-    {"name": "processCreationForm", "category": "Data Entry",      "code": """
+    }""",
+    },
+    {
+        "name": "processCreationForm",
+        "category": "Data Entry",
+        "code": """
     @PostMapping("/pets/new")
     public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result, ModelMap model) {
         if (StringUtils.hasLength(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null) {
@@ -51,8 +58,12 @@ SAMPLE_FUNCTIONS = [
         }
         this.owners.save(owner);
         return "redirect:/owners/" + owner.getId();
-    }"""},
-    {"name": "processNewVisitForm", "category": "Nested Logic",    "code": """
+    }""",
+    },
+    {
+        "name": "processNewVisitForm",
+        "category": "Nested Logic",
+        "code": """
     @PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
     public String processNewVisitForm(@Valid Visit visit, BindingResult result) {
         if (result.hasErrors()) {
@@ -60,14 +71,22 @@ SAMPLE_FUNCTIONS = [
         }
         this.visits.save(visit);
         return "redirect:/owners/{ownerId}";
-    }"""},
-    {"name": "triggerException",    "category": "Error Handling",  "code": """
+    }""",
+    },
+    {
+        "name": "triggerException",
+        "category": "Error Handling",
+        "code": """
     @GetMapping("/oups")
     public String triggerException() {
         throw new RuntimeException(
                 "Expected: controller used to showcase what " + "happens when an exception is thrown");
-    }"""},
-    {"name": "processFindForm",     "category": "Complex Data Flow","code": """
+    }""",
+    },
+    {
+        "name": "processFindForm",
+        "category": "Complex Data Flow",
+        "code": """
     @GetMapping("/owners")
     public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner,
             BindingResult result, Model model) {
@@ -83,8 +102,12 @@ SAMPLE_FUNCTIONS = [
             return "redirect:/owners/" + owner.getId();
         }
         return addPaginationModel(page, model, ownersResults);
-    }"""},
-    {"name": "processUpdateOwnerForm", "category": "Update — ID Validation", "code": """
+    }""",
+    },
+    {
+        "name": "processUpdateOwnerForm",
+        "category": "Update — ID Validation",
+        "code": """
     @PostMapping("/owners/{ownerId}/edit")
     public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result,
             @PathVariable("ownerId") int ownerId, RedirectAttributes redirectAttributes) {
@@ -101,8 +124,12 @@ SAMPLE_FUNCTIONS = [
         this.owners.save(owner);
         redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
         return "redirect:/owners/{ownerId}";
-    }"""},
-    {"name": "showOwner",           "category": "Detail View",     "code": """
+    }""",
+    },
+    {
+        "name": "showOwner",
+        "category": "Detail View",
+        "code": """
     @GetMapping("/owners/{ownerId}")
     public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
         ModelAndView mav = new ModelAndView("owners/ownerDetails");
@@ -111,8 +138,12 @@ SAMPLE_FUNCTIONS = [
                 "Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
         mav.addObject(owner);
         return mav;
-    }"""},
-    {"name": "Pet.processUpdateForm", "category": "Update — Name/Date Validation", "code": """
+    }""",
+    },
+    {
+        "name": "Pet.processUpdateForm",
+        "category": "Update — Name/Date Validation",
+        "code": """
     @PostMapping("/pets/{petId}/edit")
     public String processUpdateForm(Owner owner, @Valid Pet pet, BindingResult result,
             RedirectAttributes redirectAttributes) {
@@ -131,31 +162,47 @@ SAMPLE_FUNCTIONS = [
         updatePetDetails(owner, pet);
         redirectAttributes.addFlashAttribute("message", "Pet details has been edited");
         return "redirect:/owners/{ownerId}";
-    }"""},
-    {"name": "showVetList",         "category": "Paginated View",  "code": """
+    }""",
+    },
+    {
+        "name": "showVetList",
+        "category": "Paginated View",
+        "code": """
     @GetMapping("/vets.html")
     public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
         Vets vets = new Vets();
         Page<Vet> paginated = findPaginated(page);
         vets.getVetList().addAll(paginated.toList());
         return addPaginationModel(page, paginated, model);
-    }"""},
-    {"name": "showResourcesVetList","category": "REST Endpoint",   "code": """
+    }""",
+    },
+    {
+        "name": "showResourcesVetList",
+        "category": "REST Endpoint",
+        "code": """
     @GetMapping({ "/vets" })
     public @ResponseBody Vets showResourcesVetList() {
         Vets vets = new Vets();
         vets.getVetList().addAll(this.vetRepository.findAll());
         return vets;
-    }"""},
-    {"name": "Owner.addVisit",      "category": "Domain Logic",    "code": """
+    }""",
+    },
+    {
+        "name": "Owner.addVisit",
+        "category": "Domain Logic",
+        "code": """
     public void addVisit(Integer petId, Visit visit) {
         Assert.notNull(petId, "Pet identifier must not be null!");
         Assert.notNull(visit, "Visit must not be null!");
         Pet pet = getPet(petId);
         Assert.notNull(pet, "Invalid Pet identifier!");
         pet.addVisit(visit);
-    }"""},
-    {"name": "Owner.getPet",        "category": "Domain Logic",    "code": """
+    }""",
+    },
+    {
+        "name": "Owner.getPet",
+        "category": "Domain Logic",
+        "code": """
     public Pet getPet(String name, boolean ignoreNew) {
         for (Pet pet : getPets()) {
             String compName = pet.getName();
@@ -166,13 +213,18 @@ SAMPLE_FUNCTIONS = [
             }
         }
         return null;
-    }"""},
-    {"name": "Owner.addPet",        "category": "Domain Logic",    "code": """
+    }""",
+    },
+    {
+        "name": "Owner.addPet",
+        "category": "Domain Logic",
+        "code": """
     public void addPet(Pet pet) {
         if (pet.isNew()) {
             getPets().add(pet);
         }
-    }"""},
+    }""",
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -180,7 +232,10 @@ SAMPLE_FUNCTIONS = [
 # ---------------------------------------------------------------------------
 
 ANT_FUNCTIONS = [
-    {"name": "execute",             "category": "Build Task",       "code": """
+    {
+        "name": "execute",
+        "category": "Build Task",
+        "code": """
     public void execute() throws BuildException {
         if (srcdir == null) {
             throw new BuildException("srcdir attribute must be set", getLocation());
@@ -191,8 +246,12 @@ ANT_FUNCTIONS = [
                 compileFile(new File(srcdir, file));
             }
         }
-    }"""},
-    {"name": "compileFile",         "category": "File Processing",  "code": """
+    }""",
+    },
+    {
+        "name": "compileFile",
+        "category": "File Processing",
+        "code": """
     private void compileFile(File sourceFile) throws BuildException {
         FileInputStream fis = null;
         try {
@@ -209,13 +268,21 @@ ANT_FUNCTIONS = [
                 try { fis.close(); } catch (Exception ignore) {}
             }
         }
-    }"""},
-    {"name": "log",                 "category": "Logging",          "code": """
+    }""",
+    },
+    {
+        "name": "log",
+        "category": "Logging",
+        "code": """
     protected void log(String message) {
         String timestamp = new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date());
         System.out.println("[" + timestamp + "] " + message);
-    }"""},
-    {"name": "copyFiles",           "category": "File Processing",  "code": """
+    }""",
+    },
+    {
+        "name": "copyFiles",
+        "category": "File Processing",
+        "code": """
     private void copyFiles(File src, File dest) throws BuildException {
         if (!dest.exists()) { dest.mkdirs(); }
         String[] files = src.list();
@@ -229,8 +296,12 @@ ANT_FUNCTIONS = [
                 copyBytes(srcFile, destFile);
             }
         }
-    }"""},
-    {"name": "copyBytes",           "category": "File Processing",  "code": """
+    }""",
+    },
+    {
+        "name": "copyBytes",
+        "category": "File Processing",
+        "code": """
     private void copyBytes(File src, File dest) throws BuildException {
         FileInputStream in = null;
         FileOutputStream out = null;
@@ -248,8 +319,12 @@ ANT_FUNCTIONS = [
             try { if (in != null) in.close(); } catch (Exception ignore) {}
             try { if (out != null) out.close(); } catch (Exception ignore) {}
         }
-    }"""},
-    {"name": "deleteDir",           "category": "File System",      "code": """
+    }""",
+    },
+    {
+        "name": "deleteDir",
+        "category": "File System",
+        "code": """
     private boolean deleteDir(File dir) {
         if (dir.isDirectory()) {
             String[] children = dir.list();
@@ -259,8 +334,12 @@ ANT_FUNCTIONS = [
             }
         }
         return dir.delete();
-    }"""},
-    {"name": "runCommand",          "category": "Shell Execution",  "code": """
+    }""",
+    },
+    {
+        "name": "runCommand",
+        "category": "Shell Execution",
+        "code": """
     private int runCommand(String command) throws BuildException {
         try {
             Process proc = Runtime.getRuntime().exec(command);
@@ -269,8 +348,12 @@ ANT_FUNCTIONS = [
         } catch (Exception e) {
             throw new BuildException("Command failed: " + command + " - " + e.getMessage());
         }
-    }"""},
-    {"name": "parseProperties",     "category": "Configuration",    "code": """
+    }""",
+    },
+    {
+        "name": "parseProperties",
+        "category": "Configuration",
+        "code": """
     private Properties parseProperties(File propFile) {
         Properties props = new Properties();
         try {
@@ -281,8 +364,12 @@ ANT_FUNCTIONS = [
             log("Warning: could not load " + propFile.getName());
         }
         return props;
-    }"""},
-    {"name": "buildClasspath",      "category": "Build Config",     "code": """
+    }""",
+    },
+    {
+        "name": "buildClasspath",
+        "category": "Build Config",
+        "code": """
     private String buildClasspath(List<File> jars) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < jars.size(); i++) {
@@ -290,8 +377,12 @@ ANT_FUNCTIONS = [
             sb.append(jars.get(i).getAbsolutePath());
         }
         return sb.toString();
-    }"""},
-    {"name": "validateConfig",      "category": "Validation",       "code": """
+    }""",
+    },
+    {
+        "name": "validateConfig",
+        "category": "Validation",
+        "code": """
     private void validateConfig() throws BuildException {
         if (srcdir == null || !srcdir.exists()) {
             throw new BuildException("srcdir must exist: " + srcdir);
@@ -303,8 +394,12 @@ ANT_FUNCTIONS = [
         if (classpath == null || classpath.isEmpty()) {
             log("Warning: no classpath set - using JVM defaults");
         }
-    }"""},
-    {"name": "writeReport",         "category": "Reporting",        "code": """
+    }""",
+    },
+    {
+        "name": "writeReport",
+        "category": "Reporting",
+        "code": """
     private void writeReport(String report, File outFile) throws BuildException {
         try {
             java.io.FileWriter fw = new java.io.FileWriter(outFile, true);
@@ -314,8 +409,12 @@ ANT_FUNCTIONS = [
         } catch (Exception e) {
             throw new BuildException("Failed to write report: " + e.getMessage());
         }
-    }"""},
-    {"name": "findFiles",           "category": "File System",      "code": """
+    }""",
+    },
+    {
+        "name": "findFiles",
+        "category": "File System",
+        "code": """
     private List<File> findFiles(File dir, String extension) {
         List<File> result = new ArrayList<File>();
         if (!dir.isDirectory()) return result;
@@ -327,7 +426,8 @@ ANT_FUNCTIONS = [
             }
         }
         return result;
-    }"""},
+    }""",
+    },
 ]
 
 CORPORA = {
@@ -517,17 +617,27 @@ GRADE_ORDER = ["A", "B", "C", "D", "F"]
 
 
 def grade_color(g: str) -> str:
-    return {"A": "#4ade80", "B": "#86efac", "C": "#fde68a", "D": "#fb923c", "F": "#f87171"}.get(g, "#e2e8f0")
+    return {"A": "#4ade80", "B": "#86efac", "C": "#fde68a", "D": "#fb923c", "F": "#f87171"}.get(
+        g, "#e2e8f0"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Generate 3D CodeBalance HTML report")
-    parser.add_argument("--output-dir", default="results", help="Output directory (default: results/)")
-    parser.add_argument("--corpus", default="petclinic", choices=CORPORA.keys(), help="Corpus to analyze (default: petclinic)")
+    parser.add_argument(
+        "--output-dir", default="results", help="Output directory (default: results/)"
+    )
+    parser.add_argument(
+        "--corpus",
+        default="petclinic",
+        choices=CORPORA.keys(),
+        help="Corpus to analyze (default: petclinic)",
+    )
     args = parser.parse_args()
 
     corpus_key = args.corpus
@@ -541,16 +651,20 @@ def main():
     rows = []
     for fn in funcs:
         score = score_code(fn["code"], function_name=fn["name"])
-        rows.append({
-            "name": fn["name"],
-            "category": fn["category"],
-            "energy": score.energy,
-            "debt": score.debt,
-            "safety": score.safety,
-            "total": score.total,
-            "grade": score.grade,
-        })
-        print(f"  {fn['name']:30s}  E={score.energy} D={score.debt} S={score.safety}  [{score.grade}]")
+        rows.append(
+            {
+                "name": fn["name"],
+                "category": fn["category"],
+                "energy": score.energy,
+                "debt": score.debt,
+                "safety": score.safety,
+                "total": score.total,
+                "grade": score.grade,
+            }
+        )
+        print(
+            f"  {fn['name']:30s}  E={score.energy} D={score.debt} S={score.safety}  [{score.grade}]"
+        )
 
     # Summary stats
     n = len(rows)
@@ -558,6 +672,7 @@ def main():
     avg_d = round(sum(r["debt"] for r in rows) / n, 1)
     avg_s = round(sum(r["safety"] for r in rows) / n, 1)
     from collections import Counter
+
     grade_dist = Counter(r["grade"] for r in rows).most_common(1)[0][0]
 
     # Render HTML

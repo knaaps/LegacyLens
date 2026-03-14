@@ -35,9 +35,7 @@ _DEFAULT_DB_PATH = "./legacylens_db"
 _FINGERPRINT_FILE = Path.home() / ".legacylens" / "index_fingerprint.txt"
 
 # Minimum fidelity score required to persist an explanation (configurable).
-FIDELITY_THRESHOLD: float = float(
-    os.environ.get("LEGACYLENS_FIDELITY_THRESHOLD", "0.75")
-)
+FIDELITY_THRESHOLD: float = float(os.environ.get("LEGACYLENS_FIDELITY_THRESHOLD", "0.75"))
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -134,7 +132,7 @@ class ExplanationStore:
 
         # Chroma metadata values must be str/int/float — no nested objects.
         metadata: dict = {
-            "explanation_text": text[:4096],          # guard against Chroma field limit
+            "explanation_text": text[:4096],  # guard against Chroma field limit
             "finalized_markdown": markdown[:8192],
             "confidence": float(confidence),
             "fidelity": float(fidelity),
@@ -210,8 +208,7 @@ class ExplanationStore:
             stored_version = meta["codebase_version"]
             if stored_version and stored_version != codebase_version:
                 logger.debug(
-                    "ExplanationStore: stale record for '%s' "
-                    "(stored=%s, current=%s)",
+                    "ExplanationStore: stale record for '%s' (stored=%s, current=%s)",
                     fn_qualified_name,
                     stored_version,
                     codebase_version,

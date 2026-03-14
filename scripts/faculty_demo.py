@@ -13,6 +13,7 @@ Usage:
     LLM_PROVIDER=local python faculty_demo.py       # Ollama
 """
 
+import argparse
 import contextlib
 import io
 import json
@@ -21,8 +22,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Optional, Tuple
-import argparse
 
+from rich import box
 from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
@@ -30,25 +31,23 @@ from rich.rule import Rule
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
-from rich import box
-
 
 # ── Path setup ─────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from legacylens.parser import JavaParser, FunctionMetadata
-from legacylens.embeddings import CodeEmbedder
-from legacylens.analysis import CallGraph, slice_context, score_code, SlicedContext
 from legacylens.agents import generate_verified_explanation
+from legacylens.analysis import CallGraph, SlicedContext, score_code, slice_context
+from legacylens.embeddings import CodeEmbedder
+from legacylens.parser import FunctionMetadata, JavaParser
 
 # ── Configuration ──────────────────────────────────────────
 
-PETCLINIC     = Path("data/spring-petclinic")
-JAVA_SRC      = PETCLINIC / "src/main/java/org/springframework/samples/petclinic"
-TARGET_FN     = "processFindForm"
-TARGET_FN_2   = "processCreationForm"  # Second function for comparative scoring
-MAX_ITER      = 5
-QUERIES       = [
+PETCLINIC = Path("data/spring-petclinic")
+JAVA_SRC = PETCLINIC / "src/main/java/org/springframework/samples/petclinic"
+TARGET_FN = "processFindForm"
+TARGET_FN_2 = "processCreationForm"  # Second function for comparative scoring
+MAX_ITER = 5
+QUERIES = [
     "find owner by last name",
     "add a new pet to the clinic",
 ]
@@ -60,25 +59,31 @@ _args: argparse.Namespace | None = None
 
 # ── Helpers ────────────────────────────────────────────────
 
+
 def _step(num: int, title: str) -> None:
     console.print()
     console.print(Rule(f"[bold]STEP {num}[/bold]", style="blue"))
     console.print(f"  [bold]{title}[/bold]\n")
 
+
 def _ok(msg: str) -> None:
     console.print(f"  [green]✓[/green] {msg}")
 
+
 def _warn(msg: str) -> None:
     console.print(f"  [yellow]⚠[/yellow] {msg}")
+
 
 def _die(msg: str) -> None:
     console.print(f"\n  [red]✗ {msg}[/red]")
     sys.exit(1)
 
+
 @contextlib.contextmanager
 def _quiet():
     with contextlib.redirect_stdout(io.StringIO()):
         yield
+
 
 def _pause() -> None:
     console.print("\n[dim]  ↵ Enter to continue...[/dim]", end="")
@@ -88,6 +93,7 @@ def _pause() -> None:
 # ═══════════════════════════════════════════════════════════
 #  Step 1 — Parse entire PetClinic across all packages
 # ═══════════════════════════════════════════════════════════
+
 
 def step_1_parse() -> Tuple[List[FunctionMetadata], JavaParser]:
     _step(1, "AST Parsing  (Tree-Sitter)")
@@ -137,10 +143,10 @@ def step_1_parse() -> Tuple[List[FunctionMetadata], JavaParser]:
         header_style="bold",
         padding=(0, 1),
     )
-    tbl.add_column("Class.Method",  style="white",  min_width=30)
-    tbl.add_column("Lines",         justify="right", style="cyan")
-    tbl.add_column("CC",            justify="right", style="yellow")
-    tbl.add_column("Calls",         justify="right", style="dim")
+    tbl.add_column("Class.Method", style="white", min_width=30)
+    tbl.add_column("Lines", justify="right", style="cyan")
+    tbl.add_column("CC", justify="right", style="yellow")
+    tbl.add_column("Calls", justify="right", style="dim")
     for fn in top:
         tbl.add_row(
             fn.qualified_name,
@@ -159,6 +165,7 @@ def step_1_parse() -> Tuple[List[FunctionMetadata], JavaParser]:
 #  Step 2 — Semantic Search with multiple queries
 # ═══════════════════════════════════════════════════════════
 
+
 def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
     _step(2, "Semantic Search  (CodeBERT + ChromaDB)")
 
@@ -170,7 +177,6 @@ def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
         with _quiet():
             embedder.store_batch(functions)
     console.print(f"  Indexed [bold cyan]{len(functions)}[/bold cyan] embeddings\n")
-
 
     # Run multiple queries to show versatility
     for q in QUERIES:
@@ -190,6 +196,7 @@ def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
 # ═══════════════════════════════════════════════════════════
 #  Step 3 — Project-wide Call Graph
 # ═══════════════════════════════════════════════════════════
+
 
 def step_3_context(functions: List[FunctionMetadata]) -> Optional[SlicedContext]:
     _step(3, "Hybrid Context  (Call Graph + RAG)")
@@ -222,7 +229,11 @@ def step_3_context(functions: List[FunctionMetadata]) -> Optional[SlicedContext]
     )
     for fn in by_calls:
         stats_text += f"    • [white]{fn.qualified_name}[/]  → {len(fn.calls)} calls\n"
-    console.print(Panel(stats_text.strip(), title="[bold]Call Graph[/bold]", border_style="dim", padding=(0, 1)))
+    console.print(
+        Panel(
+            stats_text.strip(), title="[bold]Call Graph[/bold]", border_style="dim", padding=(0, 1)
+        )
+    )
 
     # Slice context for target
     ctx = slice_context(TARGET_FN, graph)
@@ -253,6 +264,7 @@ def step_3_context(functions: List[FunctionMetadata]) -> Optional[SlicedContext]
 #  Step 4 — Multi-Agent Verification
 # ═══════════════════════════════════════════════════════════
 
+
 def step_4_verify(ctx: SlicedContext) -> str:
     _step(4, "Multi-Agent Verification  (Writer → Critic → Regen)")
 
@@ -260,24 +272,25 @@ def step_4_verify(ctx: SlicedContext) -> str:
     provider = os.environ.get("LLM_PROVIDER", "local")
 
     info = Table.grid(padding=(0, 2))
-    info.add_row("[dim]Provider:[/dim]",    f"[cyan]{provider}[/cyan]")
-    info.add_row("[dim]Max loops:[/dim]",   f"[cyan]{MAX_ITER}[/cyan]")
-    info.add_row("[dim]Target:[/dim]",      f"[white]{ctx.target.qualified_name}[/white]")
+    info.add_row("[dim]Provider:[/dim]", f"[cyan]{provider}[/cyan]")
+    info.add_row("[dim]Max loops:[/dim]", f"[cyan]{MAX_ITER}[/cyan]")
+    info.add_row("[dim]Target:[/dim]", f"[white]{ctx.target.qualified_name}[/white]")
 
     # Load SOP if requested
     sop: dict = {}
     sop_label = "default"
     if _args and _args.sop:
         from legacylens.agents.sop_loader import load_sop
+
         sop = load_sop(_args.sop)
         sop_label = _args.sop
     info.add_row("[dim]SOP variant:[/dim]", f"[cyan]{sop_label}[/cyan]")
     console.print(info)
     console.print("\n  Running Writer → Critic → Regeneration...\n")
 
-    code    = ctx.target.code
+    code = ctx.target.code
     context = ctx.to_context_dict()
-    max_iters = sop.get("max_iterations", MAX_ITER)
+    max_iters: int = sop.get("max_iterations", MAX_ITER)
 
     console.print("\n[bold]Target Function:[/bold]")
 
@@ -289,15 +302,16 @@ def step_4_verify(ctx: SlicedContext) -> str:
         start_line=1,
     )
     console.print(syntax)
-    
+
     console.print("\n")
     with console.status("[bold green]Agent Loop (Writer → Critic)..."):
         try:
             from legacylens.agents.explanation_store import current_fingerprint
+
             result = generate_verified_explanation(
                 code=code,
                 context=context,
-                max_iterations=MAX_ITER,
+                max_iterations=max_iters,
                 run_regeneration=True,
                 language="java",
                 sop=sop,
@@ -329,17 +343,18 @@ def step_4_verify(ctx: SlicedContext) -> str:
         (dash_dir / f"{fn_slug}.json").write_text(json.dumps(log_payload, indent=2))
         _ok(f"Iteration log → {trace_path}")
 
-
     # ── Explanation preview ──
     preview = result.explanation[:350].strip()
     if len(result.explanation) > 350:
         preview += " …"
-    console.print(Panel(
-        preview,
-        title="[bold green]Generated Explanation[/bold green]",
-        border_style="green",
-        padding=(0, 1),
-    ))
+    console.print(
+        Panel(
+            preview,
+            title="[bold green]Generated Explanation[/bold green]",
+            border_style="green",
+            padding=(0, 1),
+        )
+    )
 
     # ── Metrics table ──
     console.print()
@@ -347,14 +362,14 @@ def step_4_verify(ctx: SlicedContext) -> str:
     mtbl.add_column("Metric", style="dim", min_width=14)
     mtbl.add_column("Value")
 
-    v_str  = "[bold green]PASS[/bold green]" if result.verified else "[bold red]FAIL[/bold red]"
-    mtbl.add_row("Verified",     v_str)
-    mtbl.add_row("Confidence",   f"[cyan]{result.confidence}%[/cyan]")
-    mtbl.add_row("Iterations",   f"{result.iterations} / {MAX_ITER}")
+    v_str = "[bold green]PASS[/bold green]" if result.verified else "[bold red]FAIL[/bold red]"
+    mtbl.add_row("Verified", v_str)
+    mtbl.add_row("Confidence", f"[cyan]{result.confidence}%[/cyan]")
+    mtbl.add_row("Iterations", f"{result.iterations} / {MAX_ITER}")
 
     if result.critique:
         fc = "[green]✓ yes[/green]" if result.critique.factual_passed else "[red]✗ no[/red]"
-        mtbl.add_row("Factual",      fc)
+        mtbl.add_row("Factual", fc)
         mtbl.add_row("Completeness", f"[cyan]{result.critique.completeness_pct:.0f}%[/cyan]")
         mtbl.add_row("Risks flagged", str(len(result.critique.flagged_risks)))
 
@@ -368,9 +383,13 @@ def step_4_verify(ctx: SlicedContext) -> str:
     if result.verified:
         _ok("Explanation verified by Compositional Critic + Regeneration")
     elif result.confidence >= 70:
-        console.print(f"  [yellow]～[/yellow] Best-effort explanation (confidence {result.confidence}%) — not formally verified but usable")
+        console.print(
+            f"  [yellow]～[/yellow] Best-effort explanation (confidence {result.confidence}%) — not formally verified but usable"
+        )
     else:
-        console.print(f"  [dim]○[/dim] Low-confidence explanation ({result.confidence}%) — treat as a draft starting point")
+        console.print(
+            f"  [dim]○[/dim] Low-confidence explanation ({result.confidence}%) — treat as a draft starting point"
+        )
 
     return code
 
@@ -378,6 +397,7 @@ def step_4_verify(ctx: SlicedContext) -> str:
 # ═══════════════════════════════════════════════════════════
 #  Step 5 — Comparative CodeBalance
 # ═══════════════════════════════════════════════════════════
+
 
 def _color(score: int) -> str:
     if score <= 3:
@@ -410,7 +430,10 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
         grade_colors = {"A": "green", "B": "green", "C": "yellow", "D": "red", "F": "red"}
         grade_color = grade_colors.get(score.grade, "white")
 
-        table = Table(title=f"[bold]{fn.qualified_name}[/bold] | Grade: [{grade_color}]{score.grade}[/{grade_color}]", box=box.ROUNDED)
+        table = Table(
+            title=f"[bold]{fn.qualified_name}[/bold] | Grade: [{grade_color}]{score.grade}[/{grade_color}]",
+            box=box.ROUNDED,
+        )
         table.add_column("Axis", style="cyan")
         table.add_column("Score", justify="center")
         table.add_column("Details", style="dim")
@@ -430,7 +453,6 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
     if panels:
         console.print(Columns(panels, equal=False, expand=True))
 
-
     _ok("3-axis health score beyond cyclomatic complexity")
     _ok("Comparative view reveals relative code health across functions")
 
@@ -438,6 +460,7 @@ def step_5_score(functions: List[FunctionMetadata]) -> None:
 # ═══════════════════════════════════════════════════════════
 #  Main
 # ═══════════════════════════════════════════════════════════
+
 
 def main() -> None:
     global _args, MAX_ITER
@@ -497,10 +520,11 @@ def main() -> None:
     console.print(welcome_table)
     console.print()
 
-
     if not PETCLINIC.exists():
         console.print(f"\n[red]✗ PetClinic not found at {PETCLINIC}[/]")
-        console.print("[dim]  Run:  cd data && git clone https://github.com/spring-projects/spring-petclinic[/dim]")
+        console.print(
+            "[dim]  Run:  cd data && git clone https://github.com/spring-projects/spring-petclinic[/dim]"
+        )
         sys.exit(1)
 
     try:
@@ -519,18 +543,20 @@ def main() -> None:
         # 4 — Multi-agent verification
         if not ctx:
             _die("Demo halted: could not build context for target function.")
-        code = step_4_verify(ctx)
+        step_4_verify(ctx)
         _pause()
 
         # 5 — Comparative CodeBalance
         step_5_score(functions)
 
         console.print()
-        console.print(Panel(
-            "[bold green]✅  All 5 capabilities demonstrated successfully.[/bold green]",
-            border_style="green",
-            padding=(0, 2),
-        ))
+        console.print(
+            Panel(
+                "[bold green]✅  All 5 capabilities demonstrated successfully.[/bold green]",
+                border_style="green",
+                padding=(0, 2),
+            )
+        )
         console.print()
 
     except KeyboardInterrupt:
@@ -541,6 +567,7 @@ def main() -> None:
     except Exception as e:
         console.print(f"\n[red]Fatal error: {e}[/red]")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

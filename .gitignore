@@ -1,45 +1,49 @@
-# Python
+# ── Python ──────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Build / packaging
 *.egg-info/
 dist/
 build/
+*.egg
 
-# Virtual environments
+# ── Virtual environments ─────────────────────────────────────
 venv/
 env/
 ENV/
+.venv/
 
-# IDE
+# ── Tooling caches ───────────────────────────────────────────
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.cache/
+
+# ── Node / JS ────────────────────────────────────────────────
+node_modules/
+package-lock.json
+
+# ── IDE & OS ─────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Project-specific
+# ── Project-specific ─────────────────────────────────────────
 apikey.env
+*.env
 *.sqlite3
 legacylens_db/
 
-# Residuals and Output
-bandit_output.txt
-mypy_output.txt
-e2e_validation_results.md
+# ── Sample data (large cloned repos) ─────────────────────────
+data/
+
+# ── Generated artefacts ──────────────────────────────────────
 results/
-
-# Node.js
-node_modules/
-package-lock.json
-
-# Caches
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/

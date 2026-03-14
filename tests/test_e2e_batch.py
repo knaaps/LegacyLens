@@ -11,8 +11,8 @@ Functions:
 5. OwnerController.processFindForm (Complex data flow)
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Ensure project root is in path
@@ -34,7 +34,7 @@ FUNCTIONS = [
         return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 6}}
+        "context": {"static_facts": {"complexity": 1, "line_count": 6}},
     },
     {
         "name": "PetController.processCreationForm",
@@ -54,7 +54,7 @@ FUNCTIONS = [
         return "redirect:/owners/" + owner.getId();
     }
         """,
-        "context": {"static_facts": {"complexity": 4, "line_count": 13}}
+        "context": {"static_facts": {"complexity": 4, "line_count": 13}},
     },
     {
         "name": "VisitController.processNewVisitForm",
@@ -69,7 +69,7 @@ FUNCTIONS = [
         return "redirect:/owners/{ownerId}";
     }
         """,
-        "context": {"static_facts": {"complexity": 2, "line_count": 8}}
+        "context": {"static_facts": {"complexity": 2, "line_count": 8}},
     },
     {
         "name": "CrashController.triggerException",
@@ -81,7 +81,7 @@ FUNCTIONS = [
                 "Expected: controller used to showcase what " + "happens when an exception is thrown");
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 5}}
+        "context": {"static_facts": {"complexity": 1, "line_count": 5}},
     },
     {
         "name": "OwnerController.processFindForm",
@@ -105,49 +105,54 @@ FUNCTIONS = [
         }
     }
         """,
-        "context": {"static_facts": {"complexity": 4, "line_count": 16}}
-    }
+        "context": {"static_facts": {"complexity": 4, "line_count": 16}},
+    },
 ]
+
 
 def run_test():
     print("Running 5-Function E2E Batch Validation...\n")
-    
+
     # Force Groq provider
     os.environ["LLM_PROVIDER"] = "groq"
-    
+
     results = []
-    
+
     for fn in FUNCTIONS:
         print(f"Testing: {fn['name']} ({fn['category']})...")
-        
+
         try:
             res = generate_verified_explanation(
                 code=fn["code"],
                 context=fn["context"],
                 max_iterations=2,
                 run_regeneration=True,
-                language="java"
+                language="java",
             )
-            
-            results.append({
-                "name": fn["name"],
-                "category": fn["category"],
-                "verified": res.verified,
-                "confidence": res.confidence,
-                "fidelity": res.fidelity_score,
-                "iterations": res.iterations,
-                "status": "PASS" if res.verified else "FAIL"
-            })
+
+            results.append(
+                {
+                    "name": fn["name"],
+                    "category": fn["category"],
+                    "verified": res.verified,
+                    "confidence": res.confidence,
+                    "fidelity": res.fidelity_score,
+                    "iterations": res.iterations,
+                    "status": "PASS" if res.verified else "FAIL",
+                }
+            )
             print(f"  -> {res.status_string}\n")
-            
+
         except Exception as e:
             print(f"  -> ERROR: {e}\n")
-            results.append({
-                "name": fn["name"],
-                "category": fn["category"],
-                "status": "ERROR",
-                "details": str(e)
-            })
+            results.append(
+                {
+                    "name": fn["name"],
+                    "category": fn["category"],
+                    "status": "ERROR",
+                    "details": str(e),
+                }
+            )
 
     # Generate Markdown Report
     report_path = "e2e_validation_results.md"
@@ -155,7 +160,7 @@ def run_test():
         f.write("# E2E Validation Results (Phase 1 Evaluation)\n\n")
         f.write("| Function | Category | Verified | Conf. | Fidelity | Result |\n")
         f.write("|:---|:---|:---:|:---:|:---:|:---:|\n")
-        
+
         passed_count = 0
         for r in results:
             if r["status"] == "PASS":
@@ -163,21 +168,24 @@ def run_test():
                 icon = "✅"
             else:
                 icon = "❌"
-            
-            fid = f"{r.get('fidelity', 0):.2f}" if r.get('fidelity') is not None else "N/A"
+
+            fid = f"{r.get('fidelity', 0):.2f}" if r.get("fidelity") is not None else "N/A"
             conf = f"{r.get('confidence', 0)}%"
-            
-            f.write(f"| {r['name']} | {r['category']} | {r.get('verified')} | {conf} | {fid} | {icon} |\n")
-            
+
+            f.write(
+                f"| {r['name']} | {r['category']} | {r.get('verified')} | {conf} | {fid} | {icon} |\n"
+            )
+
         f.write(f"\n**Total Passed:** {passed_count}/{len(results)}\n")
-    
+
     print(f"Validation complete. Report written to {report_path}")
     print(f"Passed: {passed_count}/{len(results)}")
-    
+
     if passed_count == len(results):
         sys.exit(0)
     else:
         sys.exit(1)
+
 
 if __name__ == "__main__":
     run_test()

@@ -7,8 +7,8 @@ Verifies the full orchestrator loop:
 4. Returns VerifiedExplanation with fidelity score
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Ensure project root is in path
@@ -53,49 +53,50 @@ CONTEXT = {
     }
 }
 
+
 def run_test():
     print("Running E2E Integration Test on 'processFindForm'...")
-    
+
     # Force Groq provider
     os.environ["LLM_PROVIDER"] = "groq"
-    
+
     try:
         result = generate_verified_explanation(
-            code=CODE,
-            context=CONTEXT,
-            max_iterations=2,
-            run_regeneration=True,
-            language="java"
+            code=CODE, context=CONTEXT, max_iterations=2, run_regeneration=True, language="java"
         )
-        
+
         print("\n--- TEST RESULTS ---")
         print(f"Verified: {result.verified}")
         print(f"Confidence: {result.confidence}%")
         print(f"Iterations: {result.iterations}")
         print(f"Fidelity Score: {result.fidelity_score}")
         print(f"Explanation Preview: {result.explanation[:100]}...")
-        
+
         if result.fidelity_score is None:
             print("FAIL: Regeneration validation did not run (fidelity_score is None)")
             sys.exit(1)
-            
+
         if result.fidelity_score < 0.1:
-            print(f"WARNING: Low fidelity score ({result.fidelity_score}). Check regeneration logic.")
-            
+            print(
+                f"WARNING: Low fidelity score ({result.fidelity_score}). Check regeneration logic."
+            )
+
         if result.verified:
             print("PASS: Explanation verified and validated.")
             sys.exit(0)
         else:
             print("WARNING: Explanation NOT verified (Critic rejection). Inspect logs.")
-            # We treat this as a pass for integration testing (the loop ran), 
+            # We treat this as a pass for integration testing (the loop ran),
             # but ideally it should pass.
             sys.exit(0)
-            
+
     except Exception as e:
         print(f"FAIL: Exception in orchestrator loop: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     run_test()

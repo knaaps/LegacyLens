@@ -12,10 +12,10 @@ explanations for the ablation study metrics chapter.
 import re
 from collections import Counter
 
-
 # ---------------------------------------------------------------------------
 # Tokenization
 # ---------------------------------------------------------------------------
+
 
 def _tokenize(text: str) -> list[str]:
     """Lowercase, strip punctuation, split on whitespace."""
@@ -25,12 +25,13 @@ def _tokenize(text: str) -> list[str]:
 
 
 def _ngrams(tokens: list[str], n: int) -> list[tuple]:
-    return [tuple(tokens[i:i+n]) for i in range(len(tokens) - n + 1)]
+    return [tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
 
 # ---------------------------------------------------------------------------
 # BLEU
 # ---------------------------------------------------------------------------
+
 
 def bleu_n(hypothesis: str, reference: str, n: int) -> float:
     """Compute BLEU-n precision (clipped) between hypothesis and reference."""
@@ -72,6 +73,7 @@ def bleu(hypothesis: str, reference: str) -> dict[str, float]:
 # ROUGE
 # ---------------------------------------------------------------------------
 
+
 def _rouge_n(hypothesis: str, reference: str, n: int) -> dict[str, float]:
     """ROUGE-n precision, recall, F1."""
     hyp = _ngrams(_tokenize(hypothesis), n)
@@ -101,10 +103,10 @@ def _lcs_length(a: list, b: list) -> int:
     for i in range(1, m + 1):
         curr = [0] * (n + 1)
         for j in range(1, n + 1):
-            if a[i-1] == b[j-1]:
-                curr[j] = prev[j-1] + 1
+            if a[i - 1] == b[j - 1]:
+                curr[j] = prev[j - 1] + 1
             else:
-                curr[j] = max(prev[j], curr[j-1])
+                curr[j] = max(prev[j], curr[j - 1])
         prev = curr
     return prev[n]
 

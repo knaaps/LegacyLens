@@ -55,20 +55,13 @@ def with_prompt_repetition(
     full_prompt = f"{system_prompt}\n\n{user_query}"
 
     if for_code_gen:
-        full_prompt += (
-            "\nOutput the regenerated code directly, "
-            "no explanations or reasoning."
-        )
+        full_prompt += "\nOutput the regenerated code directly, no explanations or reasoning."
 
     if variant == "simple":
         return full_prompt + "\n\n" + full_prompt
 
     if variant == "verbose":
-        return (
-            full_prompt
-            + "\n\nLet me repeat that for clarity:\n"
-            + full_prompt
-        )
+        return full_prompt + "\n\nLet me repeat that for clarity:\n" + full_prompt
 
     if variant == "x3":
         return (
@@ -88,9 +81,10 @@ def with_prompt_repetition(
 # Inspired by Kawabe & Takano (2026): shared refinements across agents
 # ---------------------------------------------------------------------------
 
-import json
-from pathlib import Path
-from collections import Counter
+import json  # noqa: E402
+from collections import Counter  # noqa: E402
+from pathlib import Path  # noqa: E402
+
 
 # Store pitfalls next to the installed package, or in ~/.legacylens/ as fallback
 def _default_pitfalls_path() -> Path:
@@ -106,6 +100,7 @@ def _default_pitfalls_path() -> Path:
         pass
     # Fallback: ~/.legacylens/
     return Path.home() / ".legacylens" / "known_pitfalls.json"
+
 
 _DEFAULT_PITFALLS_PATH = _default_pitfalls_path()
 

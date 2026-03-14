@@ -19,27 +19,26 @@ def _estimate_tokens(text: str) -> int:
     return len(text) // _CHARS_PER_TOKEN
 
 
-
 @dataclass
 class SlicedContext:
     """
     Deterministically sliced context for a target function.
-    
+
     Contains the target code plus related functions:
         - callers/callees  — call-graph neighbours
         - data_coupled     — methods sharing the same class fields
     """
-    
+
     target: FunctionNode
     callers: list[FunctionNode] = field(default_factory=list)
     callees: list[FunctionNode] = field(default_factory=list)
     data_coupled: list[FunctionNode] = field(default_factory=list)
-    
+
     @property
     def has_context(self) -> bool:
         """True if we have any related functions."""
         return bool(self.callers or self.callees or self.data_coupled)
-    
+
     def to_context_dict(self) -> dict:
         """
         Convert to context dict for the Writer agent.
@@ -79,7 +78,7 @@ class SlicedContext:
             "callees": callees_code,
             "data_coupled": [c.code for c in self.data_coupled[:2]],
         }
-    
+
     @property
     def total_lines(self) -> int:
         """Approximate total lines of context."""
@@ -97,29 +96,29 @@ def slice_context(
 ) -> SlicedContext | None:
     """
     Extract 1-hop context for a function from the call graph.
-    
+
     In addition to call-graph neighbours, includes methods that
     access the same class fields (data coupling).
-    
+
     Args:
         target_name: Name of the function to get context for
         graph: The CallGraph containing function relationships
         max_callers: Maximum number of caller functions to include
         max_callees: Maximum number of callee functions to include
-        
+
     Returns:
         SlicedContext if target found, None otherwise
     """
     target = graph.get_node(target_name)
     if not target:
         return None
-    
+
     # Get 1-hop callers (functions that call target)
     callers = graph.get_caller_nodes(target_name)[:max_callers]
-    
+
     # Get 1-hop callees (functions that target calls)
     callees = graph.get_callee_nodes(target_name)[:max_callees]
-    
+
     # ── Data-coupled methods (share class fields) ──
     already = {target_name} | {c.name for c in callers} | {c.name for c in callees}
     coupled_names: list[str] = []
@@ -127,11 +126,8 @@ def slice_context(
         for name in graph.get_field_accessors(fld):
             if name not in already and name not in coupled_names:
                 coupled_names.append(name)
-    data_coupled = [
-        graph.get_node(n) for n in coupled_names[:2]
-        if graph.get_node(n) is not None
-    ]
-    
+    data_coupled = [graph.get_node(n) for n in coupled_names[:2] if graph.get_node(n) is not None]
+
     return SlicedContext(
         target=target,
         callers=callers,
@@ -143,24 +139,24 @@ def slice_context(
 def build_hybrid_context(query: str, graph: CallGraph, rag_results: list[dict]) -> dict:
     """
     Build hybrid context: try deterministic slicing first, fallback to RAG.
-    
+
     Args:
         query: The user's query (often a function name)
         graph: The CallGraph
         rag_results: Results from vector search as fallback
-        
+
     Returns:
         Context dict for the Writer agent
     """
     # Try deterministic slicing first
     sliced = slice_context(query, graph)
-    
+
     if sliced and sliced.has_context:
         # We have graph context - use it
         context = sliced.to_context_dict()
         context["source"] = "deterministic"
         return context
-    
+
     # Fallback to RAG results
     if rag_results:
         result = rag_results[0]
@@ -179,7 +175,7 @@ def build_hybrid_context(query: str, graph: CallGraph, rag_results: list[dict]) 
             "source": "rag",
         }
         return context
-    
+
     # No context available
     return {
         "code": "",

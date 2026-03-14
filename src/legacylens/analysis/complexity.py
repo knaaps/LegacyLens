@@ -16,13 +16,13 @@ import re
 def count_lines(code: str) -> dict:
     """
     Break down a code snippet into line categories.
-    
+
     Args:
         code: Source code string
-        
+
     Returns:
         Dict with keys: total, blank, comment, code
-        
+
     Example:
         >>> count_lines("x = 1\\n\\n# comment\\ny = 2")
         {'total': 4, 'blank': 1, 'comment': 1, 'code': 2}
@@ -50,17 +50,17 @@ def count_lines(code: str) -> dict:
 def count_nesting_depth(code: str) -> int:
     """
     Find the deepest nesting level in the code.
-    
+
     Counts indentation levels as a proxy for nesting depth.
     Works for both Python (indentation-based) and Java/C-style
     (brace-based, but still typically indented).
-    
+
     Args:
         code: Source code string
-        
+
     Returns:
         Maximum nesting depth (0 = flat, 1 = one level, etc.)
-        
+
     Example:
         >>> count_nesting_depth("if True:\\n    for x in y:\\n        pass")
         2
@@ -88,15 +88,15 @@ def count_nesting_depth(code: str) -> int:
 def count_parameters(code: str) -> int:
     """
     Count the number of parameters in a function signature.
-    
+
     Works for both Python and Java-style function declarations.
-    
+
     Args:
         code: Source code of a single function
-        
+
     Returns:
         Number of parameters (0 if none or can't detect)
-        
+
     Example:
         >>> count_parameters("def foo(a, b, c):\\n    pass")
         3
@@ -120,13 +120,13 @@ def count_parameters(code: str) -> int:
 def count_loops(code: str) -> dict:
     """
     Count loops and their types in the code.
-    
+
     Args:
         code: Source code string
-        
+
     Returns:
         Dict with keys: total, for_loops, while_loops, nested
-        
+
     Example:
         >>> count_loops("for x in y:\\n    for z in w:\\n        pass")
         {'total': 2, 'for_loops': 2, 'while_loops': 0, 'nested': True}
@@ -150,11 +150,11 @@ def count_loops(code: str) -> dict:
 def has_recursion(code: str, function_name: str) -> bool:
     """
     Check if a function calls itself (direct recursion).
-    
+
     Args:
         code: Source code of the function
         function_name: Name of the function to check
-        
+
     Returns:
         True if the function appears to call itself
     """

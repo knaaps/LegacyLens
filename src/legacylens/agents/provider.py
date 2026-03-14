@@ -17,6 +17,7 @@ from pathlib import Path
 # Provider backends
 # ---------------------------------------------------------------------------
 
+
 def _call_ollama(model: str, prompt: str, temperature: float) -> str:
     """Call the local Ollama server."""
     import ollama
@@ -49,7 +50,8 @@ def _call_groq(model: str, prompt: str, temperature: float) -> str:
     # Strip Qwen3's chain-of-thought <think>...</think> tags.
     # These contain internal reasoning that should not appear in output.
     import re
-    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
     return text
 
@@ -63,10 +65,10 @@ def _call_groq(model: str, prompt: str, temperature: float) -> str:
 # producing better explanations and more reliable verification than
 # general-purpose models like Llama-3.3-70b.
 GROQ_MODEL_MAP = {
-    "deepseek-coder:6.7b": "qwen/qwen3-32b",       # Writer
-    "qwen2.5-coder:7b": "qwen/qwen3-32b",           # Critic
+    "deepseek-coder:6.7b": "qwen/qwen3-32b",  # Writer
+    "qwen2.5-coder:7b": "qwen/qwen3-32b",  # Critic
     "qwen2.5-coder:7b-instruct": "qwen/qwen3-32b",  # Critic (instruct variant)
-    "phi4-mini": "llama-3.3-70b-versatile",          # Fast strict checking
+    "phi4-mini": "llama-3.3-70b-versatile",  # Fast strict checking
 }
 
 
@@ -90,10 +92,7 @@ def _load_api_key() -> str:
                     if value.startswith("gsk_"):
                         return value
 
-    raise RuntimeError(
-        "Groq API key not found. "
-        "Create apikey.env with: groq=\"gsk_your_key_here\""
-    )
+    raise RuntimeError('Groq API key not found. Create apikey.env with: groq="gsk_your_key_here"')
 
 
 def _resolve_model(model: str, provider: str) -> str:
@@ -106,6 +105,7 @@ def _resolve_model(model: str, provider: str) -> str:
 # ---------------------------------------------------------------------------
 # Public API — this is the only function other modules need
 # ---------------------------------------------------------------------------
+
 
 def llm_generate(
     prompt: str,

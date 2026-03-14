@@ -9,21 +9,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from legacylens.agents.critic import CritiqueResult
 from legacylens.agents.utils import (
-    load_known_pitfalls,
-    save_known_pitfalls,
-    record_critique_pitfalls,
     build_pitfall_guidance,
+    load_known_pitfalls,
+    record_critique_pitfalls,
+    save_known_pitfalls,
 )
-
 
 # ── to_revision_prompt tests ─────────────────────────────────────────────
 
+
 def test_revision_prompt_hallucination():
     cr = CritiqueResult(
-        passed=False, confidence=40,
+        passed=False,
+        confidence=40,
         issues=["Explanation references names not found in code: fakeMethod"],
         suggestions="Remove fakeMethod reference",
-        factual_passed=False, completeness_pct=80,
+        factual_passed=False,
+        completeness_pct=80,
     )
     text = cr.to_revision_prompt()
     assert "HALLUCINATION FIX" in text
@@ -32,10 +34,12 @@ def test_revision_prompt_hallucination():
 
 def test_revision_prompt_completeness():
     cr = CritiqueResult(
-        passed=False, confidence=60,
+        passed=False,
+        confidence=60,
         issues=["Missing coverage: error handling, side effects"],
         suggestions="Add error details",
-        factual_passed=True, completeness_pct=40,
+        factual_passed=True,
+        completeness_pct=40,
     )
     text = cr.to_revision_prompt()
     assert "COMPLETENESS GAP" in text
@@ -44,10 +48,12 @@ def test_revision_prompt_completeness():
 
 def test_revision_prompt_safety():
     cr = CritiqueResult(
-        passed=False, confidence=50,
+        passed=False,
+        confidence=50,
         issues=["Unmentioned risk: SQL injection via string concat"],
         suggestions="Mention SQL risk",
-        factual_passed=True, completeness_pct=80,
+        factual_passed=True,
+        completeness_pct=80,
     )
     text = cr.to_revision_prompt()
     assert "SAFETY RISKS" in text
@@ -56,15 +62,19 @@ def test_revision_prompt_safety():
 
 def test_revision_prompt_clean():
     cr = CritiqueResult(
-        passed=True, confidence=90,
-        issues=[], suggestions="",
-        factual_passed=True, completeness_pct=100,
+        passed=True,
+        confidence=90,
+        issues=[],
+        suggestions="",
+        factual_passed=True,
+        completeness_pct=100,
     )
     text = cr.to_revision_prompt()
     assert "Minor quality issues" in text
 
 
 # ── Pitfall accumulation tests ────────────────────────────────────────────
+
 
 def test_pitfall_load_empty():
     with tempfile.TemporaryDirectory() as td:
@@ -86,9 +96,12 @@ def test_pitfall_record_accumulates():
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "pitfalls.json"
         cr = CritiqueResult(
-            passed=False, confidence=40,
+            passed=False,
+            confidence=40,
             issues=["Explanation references names not found in code: badRef"],
-            suggestions="", factual_passed=False, completeness_pct=60,
+            suggestions="",
+            factual_passed=False,
+            completeness_pct=60,
         )
         # Record once — stored raw
         record_critique_pitfalls(cr, path=p)
@@ -118,7 +131,10 @@ def test_build_guidance_with_data():
         # Need 2 occurrences to meet default threshold
         data = {
             "hallucination": ["invented caller processUser", "invented caller processUser"],
-            "completeness": ["Missing coverage: error handling", "Missing coverage: error handling"],
+            "completeness": [
+                "Missing coverage: error handling",
+                "Missing coverage: error handling",
+            ],
             "safety": [],
         }
         save_known_pitfalls(data, p)

@@ -70,7 +70,7 @@ def _parse_yaml(text: str) -> dict[str, Any]:
 
         # Strip inline comment
         if "#" in val_raw:
-            val_raw = val_raw[:val_raw.index("#")].strip()
+            val_raw = val_raw[: val_raw.index("#")].strip()
 
         if indent == 0:
             # Section header (e.g.  "default:")
@@ -100,8 +100,7 @@ def _coerce(val: str) -> Any:
     except ValueError:
         pass
     # Strip surrounding quotes
-    if (val.startswith('"') and val.endswith('"')) or \
-       (val.startswith("'") and val.endswith("'")):
+    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
         return val[1:-1]
     return val
 

@@ -22,12 +22,12 @@ Output:
     results/ablation_summary.md    — markdown table for thesis
 """
 
-import sys
-import os
-import csv
 import argparse
-from pathlib import Path
+import csv
+import os
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -60,8 +60,15 @@ FUNCTIONS = [
         return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 3,
-                                       "calls": [], "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 1,
+                "line_count": 3,
+                "calls": [],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "OwnerController.processCreationForm",
@@ -84,8 +91,15 @@ FUNCTIONS = [
         return "redirect:/owners/" + owner.getId();
     }
         """,
-        "context": {"static_facts": {"complexity": 2, "line_count": 9,
-                                       "calls": ["save"], "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 2,
+                "line_count": 9,
+                "calls": ["save"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "OwnerController.processFindForm",
@@ -117,9 +131,15 @@ FUNCTIONS = [
         return addPaginationModel(page, model, ownersResults);
     }
         """,
-        "context": {"static_facts": {"complexity": 5, "line_count": 17,
-                                       "calls": ["findPaginatedForOwnersLastName", "addPaginationModel"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 5,
+                "line_count": 17,
+                "calls": ["findPaginatedForOwnersLastName", "addPaginationModel"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "OwnerController.processUpdateOwnerForm",
@@ -149,9 +169,15 @@ FUNCTIONS = [
         return "redirect:/owners/{ownerId}";
     }
         """,
-        "context": {"static_facts": {"complexity": 4, "line_count": 17,
-                                       "calls": ["equals", "save"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 4,
+                "line_count": 17,
+                "calls": ["equals", "save"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "OwnerController.showOwner",
@@ -172,9 +198,15 @@ FUNCTIONS = [
         return mav;
     }
         """,
-        "context": {"static_facts": {"complexity": 2, "line_count": 8,
-                                       "calls": ["findById", "orElseThrow", "addObject"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 2,
+                "line_count": 8,
+                "calls": ["findById", "orElseThrow", "addObject"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     # ── PetClinic: PetController ─────────────────────────────────────────────
     {
@@ -205,10 +237,25 @@ FUNCTIONS = [
         return "redirect:/owners/{ownerId}";
     }
         """,
-        "context": {"static_facts": {"complexity": 5, "line_count": 16,
-                                       "calls": ["hasText", "isNew", "getPet", "now", "isAfter",
-                                                 "rejectValue", "hasErrors", "addPet", "save"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 5,
+                "line_count": 16,
+                "calls": [
+                    "hasText",
+                    "isNew",
+                    "getPet",
+                    "now",
+                    "isAfter",
+                    "rejectValue",
+                    "hasErrors",
+                    "addPet",
+                    "save",
+                ],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "PetController.processUpdateForm",
@@ -242,11 +289,25 @@ FUNCTIONS = [
         return "redirect:/owners/{ownerId}";
     }
         """,
-        "context": {"static_facts": {"complexity": 6, "line_count": 19,
-                                       "calls": ["hasText", "getPet", "equals", "getId",
-                                                 "rejectValue", "now", "isAfter", "hasErrors",
-                                                 "updatePetDetails"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 6,
+                "line_count": 19,
+                "calls": [
+                    "hasText",
+                    "getPet",
+                    "equals",
+                    "getId",
+                    "rejectValue",
+                    "now",
+                    "isAfter",
+                    "hasErrors",
+                    "updatePetDetails",
+                ],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     # ── PetClinic: VetController ─────────────────────────────────────────────
     {
@@ -267,10 +328,15 @@ FUNCTIONS = [
         return addPaginationModel(page, paginated, model);
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 6,
-                                       "calls": ["findPaginated", "getVetList", "addAll",
-                                                 "toList", "addPaginationModel"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 1,
+                "line_count": 6,
+                "calls": ["findPaginated", "getVetList", "addAll", "toList", "addPaginationModel"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "VetController.showResourcesVetList",
@@ -288,9 +354,15 @@ FUNCTIONS = [
         return vets;
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 5,
-                                       "calls": ["getVetList", "addAll", "findAll"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 1,
+                "line_count": 5,
+                "calls": ["getVetList", "addAll", "findAll"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
     # ── PetClinic: Owner domain object ───────────────────────────────────────
     {
@@ -310,9 +382,15 @@ FUNCTIONS = [
         pet.addVisit(visit);
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 7,
-                                       "calls": ["notNull", "getPet", "addVisit"],
-                                       "field_reads": ["pets"], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 1,
+                "line_count": 7,
+                "calls": ["notNull", "getPet", "addVisit"],
+                "field_reads": ["pets"],
+                "field_writes": [],
+            }
+        },
     },
     # ── Apache Ant-style legacy patterns ─────────────────────────────────────
     {
@@ -337,9 +415,15 @@ FUNCTIONS = [
         }
     }
         """,
-        "context": {"static_facts": {"complexity": 4, "line_count": 10,
-                                       "calls": ["list", "endsWith", "compileFile"],
-                                       "field_reads": ["srcdir"], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 4,
+                "line_count": 10,
+                "calls": ["list", "endsWith", "compileFile"],
+                "field_reads": ["srcdir"],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "AntTask.compileFile",
@@ -370,9 +454,15 @@ FUNCTIONS = [
         }
     }
         """,
-        "context": {"static_facts": {"complexity": 5, "line_count": 17,
-                                       "calls": ["read", "write", "close"],
-                                       "field_reads": ["outputStream"], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 5,
+                "line_count": 17,
+                "calls": ["read", "write", "close"],
+                "field_reads": ["outputStream"],
+                "field_writes": [],
+            }
+        },
     },
     {
         "name": "AntTask.log",
@@ -389,9 +479,15 @@ FUNCTIONS = [
         System.out.println("[" + timestamp + "] " + message);
     }
         """,
-        "context": {"static_facts": {"complexity": 1, "line_count": 4,
-                                       "calls": ["format", "println"],
-                                       "field_reads": [], "field_writes": []}},
+        "context": {
+            "static_facts": {
+                "complexity": 1,
+                "line_count": 4,
+                "calls": ["format", "println"],
+                "field_reads": [],
+                "field_writes": [],
+            }
+        },
     },
 ]
 
@@ -445,7 +541,9 @@ def run_zero_shot(fn: dict, writer_model: str = "deepseek-coder:6.7b") -> str:
 def run_rag_only(fn: dict, writer_model: str = "deepseek-coder:6.7b") -> str:
     """Single LLM call with code context only, no critic verification."""
     facts = fn.get("context", {}).get("static_facts", {})
-    context_str = f"Complexity: {facts.get('complexity', '?')}, Lines: {facts.get('line_count', '?')}"
+    context_str = (
+        f"Complexity: {facts.get('complexity', '?')}, Lines: {facts.get('line_count', '?')}"
+    )
     prompt = (
         "You are a software engineer. Given the code and its static metrics, explain this function.\n\n"
         f"STATIC METRICS: {context_str}\n\n"
@@ -467,9 +565,9 @@ def run_arm(arm_name: str, arm_config: dict, functions: list, writer_model: str)
     is_zero_shot = arm_config.get("_zero_shot", False)
     is_rag_only = arm_config.get("_rag_only", False)
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"ARM: {label}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     for fn in functions:
         name = fn["name"]
@@ -479,21 +577,33 @@ def run_arm(arm_name: str, arm_config: dict, functions: list, writer_model: str)
             if is_zero_shot:
                 explanation = run_zero_shot(fn, writer_model=writer_model)
                 row = {
-                    "arm": arm_name, "arm_label": label,
-                    "function": name, "category": fn["category"],
-                    "verified": False, "confidence": 0, "fidelity": None,
-                    "iterations": 1, "verdict": "ZERO_SHOT",
-                    "hallucination_free": None, "completeness_pct": None,
+                    "arm": arm_name,
+                    "arm_label": label,
+                    "function": name,
+                    "category": fn["category"],
+                    "verified": False,
+                    "confidence": 0,
+                    "fidelity": None,
+                    "iterations": 1,
+                    "verdict": "ZERO_SHOT",
+                    "hallucination_free": None,
+                    "completeness_pct": None,
                 }
 
             elif is_rag_only:
                 explanation = run_rag_only(fn, writer_model=writer_model)
                 row = {
-                    "arm": arm_name, "arm_label": label,
-                    "function": name, "category": fn["category"],
-                    "verified": False, "confidence": 0, "fidelity": None,
-                    "iterations": 1, "verdict": "RAG_ONLY",
-                    "hallucination_free": None, "completeness_pct": None,
+                    "arm": arm_name,
+                    "arm_label": label,
+                    "function": name,
+                    "category": fn["category"],
+                    "verified": False,
+                    "confidence": 0,
+                    "fidelity": None,
+                    "iterations": 1,
+                    "verdict": "RAG_ONLY",
+                    "hallucination_free": None,
+                    "completeness_pct": None,
                 }
 
             else:
@@ -509,10 +619,14 @@ def run_arm(arm_name: str, arm_config: dict, functions: list, writer_model: str)
                 )
                 explanation = res.explanation
                 row = {
-                    "arm": arm_name, "arm_label": label,
-                    "function": name, "category": fn["category"],
-                    "verified": res.verified, "confidence": res.confidence,
-                    "fidelity": res.fidelity_score, "iterations": res.iterations,
+                    "arm": arm_name,
+                    "arm_label": label,
+                    "function": name,
+                    "category": fn["category"],
+                    "verified": res.verified,
+                    "confidence": res.confidence,
+                    "fidelity": res.fidelity_score,
+                    "iterations": res.iterations,
                     "verdict": res.verdict,
                     "hallucination_free": res.critique.factual_passed if res.critique else None,
                     "completeness_pct": res.critique.completeness_pct if res.critique else None,
@@ -530,11 +644,17 @@ def run_arm(arm_name: str, arm_config: dict, functions: list, writer_model: str)
 
         except Exception as e:
             row = {
-                "arm": arm_name, "arm_label": label,
-                "function": name, "category": fn["category"],
-                "verified": False, "confidence": 0, "fidelity": None,
-                "iterations": 0, "verdict": "ERROR",
-                "hallucination_free": None, "completeness_pct": None,
+                "arm": arm_name,
+                "arm_label": label,
+                "function": name,
+                "category": fn["category"],
+                "verified": False,
+                "confidence": 0,
+                "fidelity": None,
+                "iterations": 0,
+                "verdict": "ERROR",
+                "hallucination_free": None,
+                "completeness_pct": None,
                 "error": str(e),
             }
             print(f"ERROR: {e}")
@@ -555,10 +675,14 @@ def compute_summary(results: list[dict]) -> dict:
     if not valid:
         return {"count": 0}
 
-    def avg(lst): return sum(lst) / len(lst) if lst else 0.0
+    def avg(lst):
+        return sum(lst) / len(lst) if lst else 0.0
 
-    halluc_free = [1 if r.get("hallucination_free") else 0
-                   for r in valid if r.get("hallucination_free") is not None]
+    halluc_free = [
+        1 if r.get("hallucination_free") else 0
+        for r in valid
+        if r.get("hallucination_free") is not None
+    ]
     fidelities = [r["fidelity"] for r in valid if r.get("fidelity") is not None]
     completeness = [r["completeness_pct"] for r in valid if r.get("completeness_pct") is not None]
 
@@ -591,12 +715,27 @@ def save_csv(all_results: list[dict], path: Path):
     for r in all_results:
         all_keys.update(r.keys())
     ordered_keys = [
-        "arm", "arm_label", "function", "category", "verified", "confidence",
-        "fidelity", "iterations", "verdict", "hallucination_free", "completeness_pct",
-        "bleu1", "bleu2", "rouge1", "rouge2", "rougeL", "error",
+        "arm",
+        "arm_label",
+        "function",
+        "category",
+        "verified",
+        "confidence",
+        "fidelity",
+        "iterations",
+        "verdict",
+        "hallucination_free",
+        "completeness_pct",
+        "bleu1",
+        "bleu2",
+        "rouge1",
+        "rouge2",
+        "rougeL",
+        "error",
     ]
-    fieldnames = [k for k in ordered_keys if k in all_keys] + \
-                 [k for k in sorted(all_keys) if k not in ordered_keys]
+    fieldnames = [k for k in ordered_keys if k in all_keys] + [
+        k for k in sorted(all_keys) if k not in ordered_keys
+    ]
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
@@ -626,7 +765,8 @@ def save_summary_md(summaries: dict, path: Path):
             label = ARMS[arm_name]["label"]
             halluc = (
                 f"{summary['hallucination_rate']:.2f}"
-                if summary["hallucination_rate"] is not None else "N/A"
+                if summary["hallucination_rate"] is not None
+                else "N/A"
             )
             f.write(
                 f"| {label} "
@@ -661,11 +801,13 @@ def main():
         help=f"Comma-separated arms to run (available: {', '.join(ARMS.keys())})",
     )
     parser.add_argument(
-        "--output-dir", default="results",
+        "--output-dir",
+        default="results",
         help="Output directory for results (default: results/)",
     )
     parser.add_argument(
-        "--writer-model", default="deepseek-coder:6.7b",
+        "--writer-model",
+        default="deepseek-coder:6.7b",
         help="Writer model (default: deepseek-coder:6.7b; auto-mapped for Groq)",
     )
     args = parser.parse_args()
@@ -696,15 +838,19 @@ def main():
     save_summary_md(summaries, out / "ablation_summary.md")
 
     # Print console summary
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("ABLATION SUMMARY")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     for arm_name in selected:
         s = summaries.get(arm_name, {})
         if not s.get("count"):
             continue
         label = ARMS[arm_name]["label"]
-        halluc = f"Halluc={s['hallucination_rate']:.2f}" if s["hallucination_rate"] is not None else "Halluc=N/A"
+        halluc = (
+            f"Halluc={s['hallucination_rate']:.2f}"
+            if s["hallucination_rate"] is not None
+            else "Halluc=N/A"
+        )
         print(
             f"  {label:50s} | "
             f"Acc={s['accuracy']:.2f} {halluc} "

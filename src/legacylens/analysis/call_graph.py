@@ -12,7 +12,7 @@ from typing import Optional
 @dataclass
 class FunctionNode:
     """A function in the call graph."""
-    
+
     name: str
     qualified_name: str
     file_path: str
@@ -25,33 +25,33 @@ class FunctionNode:
 class CallGraph:
     """
     In-memory call graph for deterministic context assembly.
-    
+
     The graph tracks:
     - callees: For function A, what functions does A call?
     - callers: For function B, what functions call B?
-    
+
     Usage:
         graph = CallGraph()
         graph.add_function("processForm", calls=["validate", "save"])
         graph.add_function("validate", calls=[])
-        
+
         graph.get_callees("processForm")  # ["validate", "save"]
         graph.get_callers("validate")      # ["processForm"]
     """
-    
+
     def __init__(self):
         # name -> FunctionNode
         self._nodes: dict[str, FunctionNode] = {}
-        
+
         # name -> list of names that call it
         self._callers: dict[str, list[str]] = defaultdict(list)
-        
+
         # name -> list of names it calls (direct from node.calls)
         self._callees: dict[str, list[str]] = defaultdict(list)
-        
+
         # field_name -> list of function names that read/write it
         self._field_accessors: dict[str, list[str]] = defaultdict(list)
-    
+
     def add_function(
         self,
         name: str,
@@ -64,7 +64,7 @@ class CallGraph:
     ) -> None:
         """
         Add a function to the graph.
-        
+
         Args:
             name: Simple function name (e.g., "validate")
             qualified_name: Full name (e.g., "UserController.validate")
@@ -83,63 +83,55 @@ class CallGraph:
             field_reads=field_reads or [],
             field_writes=field_writes or [],
         )
-        
+
         self._nodes[name] = node
         self._callees[name] = calls
-        
+
         # Update reverse mapping (callers)
         for callee in calls:
             if name not in self._callers[callee]:
                 self._callers[callee].append(name)
-        
+
         # Update field access index
         for fld in (field_reads or []) + (field_writes or []):
             if name not in self._field_accessors[fld]:
                 self._field_accessors[fld].append(name)
-    
+
     def get_node(self, name: str) -> Optional[FunctionNode]:
         """Get a function node by name."""
         return self._nodes.get(name)
-    
+
     def get_callers(self, name: str) -> list[str]:
         """Get all functions that call the given function."""
         return self._callers.get(name, [])
-    
+
     def get_callees(self, name: str) -> list[str]:
         """Get all functions that the given function calls."""
         return self._callees.get(name, [])
-    
+
     def get_caller_nodes(self, name: str) -> list[FunctionNode]:
         """Get FunctionNode objects for all callers."""
-        return [
-            self._nodes[caller]
-            for caller in self.get_callers(name)
-            if caller in self._nodes
-        ]
-    
+        return [self._nodes[caller] for caller in self.get_callers(name) if caller in self._nodes]
+
     def get_callee_nodes(self, name: str) -> list[FunctionNode]:
         """Get FunctionNode objects for all callees."""
-        return [
-            self._nodes[callee]
-            for callee in self.get_callees(name)
-            if callee in self._nodes
-        ]
-    
+        return [self._nodes[callee] for callee in self.get_callees(name) if callee in self._nodes]
+
     def has_function(self, name: str) -> bool:
         """Check if a function exists in the graph."""
         return name in self._nodes
-    
+
     def get_field_accessors(self, field_name: str) -> list[str]:
         """Return function names that read or write the given class field."""
         return self._field_accessors.get(field_name, [])
-    
+
     @property
     def size(self) -> int:
         """Number of functions in the graph."""
         return len(self._nodes)
-    
+
     def __contains__(self, name: str) -> bool:
         return self.has_function(name)
-    
+
     def __len__(self) -> int:
         return self.size
