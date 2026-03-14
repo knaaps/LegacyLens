@@ -129,3 +129,12 @@
     - **Search:** Global autocomplete search with split-view explanation results.
     - **CLI Integration:** Added `--web` and `--format json|markdown` flags for better terminal-to-web transitions.
 - **Momentum:** 10/10. Submission-ready.
+
+### Final Polish & UI Fixes: March 14, 2026
+- **Goal:** Resolve dashboard rendering bugs, CLI tooling, and YAML SOP introduction.
+- **Result:**
+    - **Heatmap Rendering Fix:** Resolved zero-width d3.js container issue using double `requestAnimationFrame` and fallback dimensions. Cleaned up duplicate blocks in `base.html`.
+    - **CLI Output Robustness:** Updated `analyze.py` to correctly structure and write valid JSON output metrics locally, removing flaky `/tmp` file parsing.
+    - **UI Enhancements:** Restyled metric pills, improved layout consistency in `dashboard.html` and `functions.html`. Added `DashboardData` structured schema.
+    - **Agentic SOPs:** Implemented YAML-based Standard Operating Procedures (`sops.yaml`) for dynamic agent parameter overrides without code changes.
+- **Momentum:** 10/10. Production UI is fully stable and responsive.

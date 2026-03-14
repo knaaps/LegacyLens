@@ -88,6 +88,12 @@
 -   **Optimization:** Employs **Prompt Repetition** (Leviathan et al., 2025) tailored for code generation (Opus 4.6 style) to enforce full token attention, significantly reducing hallucination and improving AST fidelity.
 -   **Threshold:** > 70% structural match required for "High Fidelity".
 
+### 3.7 Phase 6: Agentic Extensibility (New)
+*(Status: Implemented)*
+-   **Concept:** Dynamic Standard Operating Procedures (SOPs) defined in YAML to separate agent configuration from engine logic.
+-   **Implementation:** `sop_loader.py` dynamically overrides `Writer`, `Critic`, and `Finalizer` parameters at runtime. This provides a flexible "control plane" for prompt engineering and agent tuning without code redeployment.
+-   **Observability:** Integrated Regeneration State Logging into JSON traces (`regen_trace.json`), parsed by the backend API to visualize the multi-step verification process on the frontend.
+
 ---
 
 ## 4. Success Metrics & Validation

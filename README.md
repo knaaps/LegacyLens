@@ -29,6 +29,11 @@ LegacyLens orchestrates a **Writer-Critic-Finalizer Loop** with **Compositional 
 -   **Finalizer Agent:** Polishes the verified explanation for maximum readability, structuring the output into clear paragraphs for purpose, parameters, return, and side effects.
 -   **Persistent Explanation Cache (New):** Stores high-confidence results in a dedicated ChromaDB collection. Sub-second retrieval for previously verified functions, significantly reducing cost and latency for repeat queries.
 
+###  2026 Agentic Adaptations
+LegacyLens introduces modern agentic capabilities for extensibility and observability:
+- **YAML SOP Loader (`--sop`):** Agent behaviors (Writer, Critic, Finalizer) can now be dynamically configured using external `sops.yaml` files. This allows temperature tuning and prompt overriding without modifying Python engine code.
+- **Regeneration State Logging:** Deep visibility into the verification loop via JSON traces (`regen_trace.json`), allowing frontend components to visualize the Agent's "Revision Timeline" step-by-step.
+
 ###  Evaluation & Visualization
 LegacyLens includes robust tools for analysis and measurement:
 -   **Ablation Runner:** Built-in scripts to test and compare different agent configurations.
