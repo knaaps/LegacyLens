@@ -176,23 +176,10 @@
         border-radius: 20px;
     }
 
-    .pill-red {
-        background: rgba(248, 113, 113, .15);
-        color: var(--danger);
-        border: 1px solid rgba(248, 113, 113, .3);
-    }
+    .pill-red { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .pill-yellow { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .pill-green { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
 
-    .pill-yellow {
-        background: rgba(251, 191, 36, .12);
-        color: var(--warn);
-        border: 1px solid rgba(251, 191, 36, .3);
-    }
-
-    .pill-green {
-        background: rgba(52, 211, 153, .12);
-        color: var(--safe);
-        border: 1px solid rgba(52, 211, 153, .3);
-    }
 </style>
 {% endblock %}
 
@@ -201,7 +188,7 @@
     <div class="section-title">Module-Level Risk Heatmap</div>
     <div class="heatmap-card">
         <div class="heatmap-header">
-            <h2>🔥 Risk Treemap</h2>
+            <h2>Risk Treemap</h2>
             <div class="heatmap-legend">
                 <span><span class="hl-dot" style="background:#34d399"></span> Low Risk</span>
                 <span><span class="hl-dot" style="background:#fbbf24"></span> Medium Risk</span>
@@ -225,9 +212,9 @@
             <thead>
                 <tr>
                     <th>Function</th>
-                    <th>⚡ Energy</th>
-                    <th>🔧 Debt</th>
-                    <th>🛡 Safety</th>
+                    <th>Energy</th>
+                    <th>Debt</th>
+                    <th>Safety</th>
                 </tr>
             </thead>
             <tbody id="dd-tbody"></tbody>
@@ -243,11 +230,11 @@
     let allFuncs = [];
 
     function safetyColor(v) {
-        if (v <= 3) return '#34d399';
-        if (v <= 5) return '#6ee7a7';
+        if (v <= 3) return '#10b981';
+        if (v <= 5) return '#34d399';
         if (v <= 6) return '#fbbf24';
-        if (v <= 7) return '#f97316';
-        return '#f87171';
+        if (v <= 7) return '#f59e0b';
+        return '#ef4444';
     }
 
     function buildTreemap(moduleSummary) {
@@ -309,26 +296,18 @@
             });
 
         leaf.append('text')
-            .attr('x', 6).attr('y', 16)
-            .text(d => {
-                const w = d.x1 - d.x0;
-                return w > 50 ? d.data.name : '';
-            })
+            .attr('x', 8).attr('y', 18)
+            .text(d => (d.x1 - d.x0 > 60) ? d.data.name : '')
             .attr('fill', '#0f0f1a')
             .attr('font-size', '11px')
-            .attr('font-weight', '600')
-            .attr('font-family', 'Inter, sans-serif')
+            .attr('font-weight', '700')
             .style('pointer-events', 'none');
 
         leaf.append('text')
-            .attr('x', 6).attr('y', 30)
-            .text(d => {
-                const w = d.x1 - d.x0;
-                return w > 70 ? `${d.data.count} fns` : '';
-            })
-            .attr('fill', 'rgba(15,15,26,.6)')
+            .attr('x', 8).attr('y', 34)
+            .text(d => (d.x1 - d.x0 > 80) ? `${d.data.count} functions` : '')
+            .attr('fill', 'rgba(15,15,26,0.6)')
             .attr('font-size', '10px')
-            .attr('font-family', 'Inter, sans-serif')
             .style('pointer-events', 'none');
     }
 

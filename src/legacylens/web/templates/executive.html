@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Executive Summary - LegacyLens{% endblock %}
+{% block nav_executive %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Executive Summary specific styles */
+    .exec-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+    .exec-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        box-shadow: var(--shadow);
+    }
+    .exec-section h2 {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+    }
+    .exec-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .exec-item {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .exec-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        border-color: var(--text-dim);
+    }
+    .ei-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+    }
+    .ei-name {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--accent);
+        word-break: break-all;
+    }
+    .ei-file {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-top: 4px;
+    }
+    .ei-metrics {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        margin-top: 8px;
+    }
+    .ei-metric {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .ei-metric-label {
+        color: var(--text-dim);
+    }
+    .ei-value {
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .ei-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .badge-expensive {
+        background: rgba(255, 85, 85, 0.1);
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+    .badge-risk {
+        background: rgba(255, 184, 77, 0.1);
+        color: var(--warn);
+        border: 1px solid var(--warn);
+    }
+    /* Summary KPIs at top */
+    .kpi-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-bottom: 12px;
+    }
+    .kpi-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow);
+    }
+    .kpi-title {
+        font-size: 12px;
+        color: var(--text-dim);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+    }
+    .kpi-value {
+        font-size: 36px;
+        font-weight: 800;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+    }
+    @media (max-width: 900px) {
+        .exec-grid {
+            grid-template-columns: 1fr;
+        }
+        .kpi-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="kpi-row" id="exec-kpis">
+    <div class="kpi-card">
+        <div class="kpi-title">Total Functions</div>
+        <div class="kpi-value" id="kpi-total">-</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-title">Average Tech Debt</div>
+        <div class="kpi-value" id="kpi-debt">-</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-title">Average Safety</div>
+        <div class="kpi-value" id="kpi-safety">-</div>
+    </div>
+</div>
+
+<div class="exec-grid">
+    <div class="exec-section" id="exec-expensive">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            High ROI Refactoring Targets
+        </h2>
+        <div class="exec-list" id="list-expensive">
+            <div style="color:var(--text-dim); font-size:13px; text-align:center; padding: 20px;">Loading...</div>
+        </div>
+    </div>
+    
+    <div class="exec-section" id="exec-risk">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Critical Safety Risks
+        </h2>
+        <div class="exec-list" id="list-risk">
+            <div style="color:var(--text-dim); font-size:13px; text-align:center; padding: 20px;">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const L = window.LegacyLens;
+        document.getElementById('app-root').style.display = 'flex';
+        
+        try {
+            await Promise.all([
+                L.initNav(),
+                L.loadAllFunctions(),
+                loadExecutive(),
+                loadKPIs()
+            ]);
+        } catch (err) {
+            const eb = document.getElementById('error-banner');
+            eb.textContent = 'Failed to load executive summary: ' + err.message;
+            eb.style.display = 'block';
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    });
+
+    async function loadKPIs() {
+        const summary = await window.LegacyLens.api('/api/summary');
+        document.getElementById('kpi-total').textContent = summary.total_functions || 0;
+        
+        if (summary.averages) {
+            document.getElementById('kpi-debt').textContent = (summary.averages.debt || 0).toFixed(1);
+            document.getElementById('kpi-safety').textContent = (summary.averages.safety || 0).toFixed(1);
+        }
+    }
+
+    async function loadExecutive() {
+        const data = await window.LegacyLens.api('/api/executive');
+        const L = window.LegacyLens;
+
+        function renderItem(item, badgeClass, badgeLabel) {
+            const e = item.energy || 0, d = item.debt || 0, s = item.safety || 0;
+            const fileParts = (item.file || 'unknown').split('/');
+            const fileShort = fileParts.slice(Math.max(0, fileParts.length - 2)).join('/');
+            
+            return `
+                <div class="exec-item" onclick="window.LegacyLens.openExplainModal('${item.name}')">
+                    <div class="ei-header">
+                        <div>
+                            <div class="ei-name">${item.name}</div>
+                            <div class="ei-file">.../${fileShort}</div>
+                        </div>
+                        <div class="ei-badge ${badgeClass}">${badgeLabel}</div>
+                    </div>
+                    <div class="ei-metrics">
+                        <div class="ei-metric">
+                            <span class="ei-metric-label">Debt:</span>
+                            <span class="ei-value" style="color:${L.scoreColor(d)}">${d}</span>
+                        </div>
+                        <div class="ei-metric">
+                            <span class="ei-metric-label">Energy:</span>
+                            <span class="ei-value" style="color:${L.scoreColor(e)}">${e}</span>
+                        </div>
+                        <div class="ei-metric">
+                            <span class="ei-metric-label">Safety:</span>
+                            <span class="ei-value" style="color:${L.scoreColor(s)}">${s}</span>
+                        </div>
+                        <div class="ei-metric" style="margin-left: auto;">
+                            <span class="ei-metric-label">Est. Cost ROI:</span>
+                            <span class="ei-value" style="color:var(--text);">$${item.cost.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const expList = document.getElementById('list-expensive');
+        if (data.expensive && data.expensive.length > 0) {
+            expList.innerHTML = data.expensive.map(item => renderItem(item, 'badge-expensive', 'High Cost')).join('');
+        } else {
+            expList.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding: 12px; text-align:center;">No data available.</div>';
+        }
+
+        const riskList = document.getElementById('list-risk');
+        if (data.risk && data.risk.length > 0) {
+            riskList.innerHTML = data.risk.map(item => renderItem(item, 'badge-risk', 'High Risk')).join('');
+        } else {
+            riskList.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding: 12px; text-align:center;">No data available.</div>';
+        }
+    }
+</script>
+{% endblock %}

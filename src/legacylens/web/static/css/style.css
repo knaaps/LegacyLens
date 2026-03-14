@@ -5,22 +5,57 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-sidebar: #1e1e2e;
-  --bg-editor:  #1e1e1e;
-  --bg-panel:   #252535;
-  --bg-bar:     #13131f;
-  --accent:     #7c6af7;
-  --accent2:    #56d4a0;
-  --danger:     #f87171;
-  --warn:       #fbbf24;
-  --safe:       #34d399;
-  --text:       #cdd6f4;
-  --text-dim:   #6c7086;
-  --border:     #313244;
-  --hover:      #2a2a3e;
-  --radius:     6px;
+  /* Nebula Dark Palette */
+  --bg-deep:    #05050a;
+  --bg-sidebar: #0a0a16;
+  --bg-editor:  #0a0a12;
+  --bg-panel:   #0d0d1f;
+  --bg-bar:     #050510;
+  
+  /* Primary Accent & Glows */
+  --accent:     hsl(250, 85%, 70%);
+  --accent-glow: hsla(250, 85%, 70%, 0.3);
+  --accent2:    hsl(160, 80%, 65%);
+  
+  /* Semantic Colors - Vibrant Forensic Palette */
+  --danger:     #ff4d4d;
+  --warn:       #ffab00;
+  --safe:       #00e676;
+  
+  /* UI Atoms */
+  --text:       #e0e0f0;
+  --text-dim:   #9499b8;
+  --border:     rgba(255, 255, 255, 0.08);
+  --hover:      rgba(255, 255, 255, 0.04);
+  --radius:     8px;
+  
+  /* Typography */
   --font-ui:    'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-code:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  
+  /* Glassmorphism */
+  --glass-bg:   rgba(15, 15, 30, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(12px);
+}
+
+/* Glassmorphism Utility */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glow-border {
+  border: 1px solid var(--glass-border);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glow-border:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent-glow);
 }
 
 html, body { height: 100%; overflow: hidden; }

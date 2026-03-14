@@ -92,6 +92,10 @@ def create_app():
     def heatmap_view():
         return render_template('heatmap.html')
 
+    @app.route('/executive')
+    def executive_view():
+        return render_template('executive.html')
+
     # ── CodeBalance API (3D scatter data with full detail) ─────────────────────
     @app.route('/api/codebalance')
     def api_codebalance():
@@ -117,6 +121,40 @@ def create_app():
         if file_filter:
             functions = [f for f in functions if f.get('file') == file_filter]
         return jsonify(functions)
+
+    # ── Executive Summary API ─────────────────────────────────────────────────
+    @app.route('/api/executive')
+    def api_executive():
+        fns = _load_functions()
+        if not fns:
+            return jsonify({'error': 'No data. Run legacylens index first.'}), 404
+
+        items = []
+        for f in fns:
+            e = f.get('energy') or 0
+            d = f.get('debt') or 0
+            s = f.get('safety') or 0
+            
+            # Synthetic Tech Debt ROI Cost (example synthetic metric)
+            cost = (d * 500) + (e * 200)
+            
+            # Risk factor prioritizes poor safety, then debt and energy
+            risk_score = ((10 - s) * 10) + d + e
+            
+            items.append({
+                'name': f.get('name', ''),
+                'file': f.get('file', ''),
+                'energy': e,
+                'debt': d,
+                'safety': s,
+                'cost': cost,
+                'risk_score': risk_score
+            })
+            
+        return jsonify({
+            'expensive': sorted(items, key=lambda x: x['cost'], reverse=True)[:5],
+            'risk': sorted(items, key=lambda x: x['risk_score'], reverse=True)[:5]
+        })
 
     # ── summary KPIs ──────────────────────────────────────────────────────────
     @app.route('/api/summary')

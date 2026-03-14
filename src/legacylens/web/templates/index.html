@@ -6,30 +6,41 @@
 {% block extra_head %}
 <style>
     /* ── section headings ────────────────────────────── */
+    /* ── section headings ────────────────────────────── */
     .section-title {
         font-size: 11px;
         font-weight: 700;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
         text-transform: uppercase;
         color: var(--text-dim);
-        margin-bottom: 14px;
+        margin: 32px 0 16px 4px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-title::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        background: linear-gradient(90deg, var(--border), transparent);
     }
 
     /* ── KPI cards ───────────────────────────────────── */
     .kpi-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
     }
 
     .kpi-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 18px 20px;
+        padding: 24px 20px;
         position: relative;
         overflow: hidden;
-        transition: border-color .2s;
+        transition: border-color 0.2s ease;
     }
 
     .kpi-card:hover {
@@ -42,194 +53,176 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 3px;
+        height: 4px;
+        opacity: 0.8;
     }
 
-    .kpi-card.kpi-neutral::before {
-        background: var(--accent);
-    }
-
-    .kpi-card.kpi-energy::before {
-        background: var(--danger);
-    }
-
-    .kpi-card.kpi-debt::before {
-        background: var(--warn);
-    }
-
-    .kpi-card.kpi-safety::before {
-        background: var(--safe);
-    }
-
-    .kpi-card.kpi-risk::before {
-        background: linear-gradient(90deg, var(--danger), var(--warn));
-    }
+    .kpi-card.kpi-neutral::before { background: var(--accent); }
+    .kpi-card.kpi-energy::before { background: var(--danger); }
+    .kpi-card.kpi-debt::before { background: var(--warn); }
+    .kpi-card.kpi-safety::before { background: var(--safe); }
+    .kpi-card.kpi-risk::before { background: var(--text); }
 
     .kpi-label {
         font-size: 11px;
         color: var(--text-dim);
-        font-weight: 500;
-        margin-bottom: 8px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        letter-spacing: 0.5px;
     }
 
     .kpi-value {
-        font-size: 30px;
-        font-weight: 700;
+        font-size: 36px;
+        font-weight: 800;
         line-height: 1;
+        letter-spacing: -0.5px;
     }
 
-    .kpi-value.energy-color {
-        color: var(--danger);
-    }
-
-    .kpi-value.debt-color {
-        color: var(--warn);
-    }
-
-    .kpi-value.safety-color {
-        color: var(--safe);
-    }
-
-    .kpi-value.risk-color {
-        color: var(--danger);
-    }
+    .kpi-value.energy-color { color: var(--danger); }
+    .kpi-value.debt-color { color: var(--warn); }
+    .kpi-value.safety-color { color: var(--safe); }
+    .kpi-value.risk-color { color: var(--danger); }
 
     .kpi-sub {
         font-size: 11px;
         color: var(--text-dim);
-        margin-top: 6px;
+        margin-top: 10px;
+        opacity: 0.8;
     }
 
     .kpi-icon {
         position: absolute;
-        bottom: 12px;
-        right: 14px;
-        font-size: 28px;
-        opacity: .08;
+        top: 18px;
+        right: 18px;
+        font-size: 24px;
+        opacity: 0.15;
+        transition: transform 0.3s ease;
+    }
+
+    .kpi-card:hover .kpi-icon {
+        opacity: 0.3;
     }
 
     /* ── charts row ──────────────────────────────────── */
     .charts-row {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 14px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
     }
 
-    @media (max-width: 1100px) {
-        .charts-row {
-            grid-template-columns: 1fr 1fr;
-        }
-    }
-
-    @media (max-width: 700px) {
-        .charts-row {
-            grid-template-columns: 1fr;
-        }
-    }
+    @media (max-width: 1100px) { .charts-row { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
 
     .chart-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 18px 20px;
+        padding: 24px;
+        transition: all 0.3s ease;
     }
 
+    .chart-card:hover { border-color: rgba(255,255,255,0.15); background: var(--surface2); }
+
     .chart-card-title {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 700;
         color: var(--text);
-        margin-bottom: 14px;
+        margin-bottom: 20px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
 
     .chart-card-title .dot {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
-        flex-shrink: 0;
+        box-shadow: 0 0 8px currentColor;
     }
 
-    .chart-wrap {
-        height: 180px;
-    }
+    .chart-wrap { height: 200px; }
 
     /* ── 3D scatter hero ────────────────────────────── */
     .scatter-hero {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 18px 20px;
+        padding: 24px;
         position: relative;
+        margin-top: 24px;
     }
 
     .scatter-hero-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 20px;
     }
 
     .scatter-hero-header h2 {
-        font-size: 16px;
-        font-weight: 700;
+        font-size: 18px;
+        font-weight: 800;
         color: var(--text);
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        letter-spacing: -0.5px;
     }
 
     .scatter-hero-header .scatter-legend {
         display: flex;
-        gap: 14px;
-        font-size: 11px;
+        gap: 20px;
+        font-size: 12px;
         color: var(--text-dim);
+        background: rgba(0,0,0,0.2);
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
     }
 
     .scatter-hero-header .legend-dot {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         display: inline-block;
-        margin-right: 4px;
+        margin-right: 6px;
         vertical-align: middle;
+        box-shadow: 0 0 8px currentColor;
     }
 
-    #plotly-scatter {
-        height: 480px;
-    }
+    #plotly-scatter { height: 520px; border-radius: 8px; overflow: hidden; }
 
     /* ── module heatmap table ─────────────────────────── */
     .module-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 18px 20px;
+        padding: 24px;
+        overflow-x: auto;
     }
 
     /* ── risk tables ─────────────────────────────────── */
     .tables-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 14px;
+        gap: 16px;
     }
 
     .table-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 18px 20px;
+        padding: 24px;
     }
 
     .table-card-title {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 700;
         color: var(--text);
-        margin-bottom: 12px;
+        margin-bottom: 18px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
 
     table.risk-table {
@@ -313,31 +306,31 @@
             <div class="kpi-label">Functions Analysed</div>
             <div class="kpi-value" id="kpi-total">–</div>
             <div class="kpi-sub" id="kpi-files">–</div>
-            <div class="kpi-icon">ƒ</div>
+            <div class="kpi-icon">FN</div>
         </div>
         <div class="kpi-card kpi-energy">
-            <div class="kpi-label">⚡ Avg Energy Score</div>
+            <div class="kpi-label">Avg Energy Score</div>
             <div class="kpi-value energy-color" id="kpi-energy">–</div>
             <div class="kpi-sub">Complexity / Performance stress</div>
-            <div class="kpi-icon">⚡</div>
+            <div class="kpi-icon">ENG</div>
         </div>
         <div class="kpi-card kpi-debt">
-            <div class="kpi-label">🔧 Avg Technical Debt</div>
+            <div class="kpi-label">Avg Technical Debt</div>
             <div class="kpi-value debt-color" id="kpi-debt">–</div>
             <div class="kpi-sub">Code maintainability burden</div>
-            <div class="kpi-icon">🔧</div>
+            <div class="kpi-icon">DBT</div>
         </div>
         <div class="kpi-card kpi-safety">
-            <div class="kpi-label">🛡 Avg Safety Score</div>
+            <div class="kpi-label">Avg Safety Score</div>
             <div class="kpi-value safety-color" id="kpi-safety">–</div>
             <div class="kpi-sub">Validation & input risk</div>
-            <div class="kpi-icon">🛡</div>
+            <div class="kpi-icon">SFT</div>
         </div>
         <div class="kpi-card kpi-risk">
-            <div class="kpi-label">🔥 High-Risk Functions</div>
+            <div class="kpi-label">High-Risk Functions</div>
             <div class="kpi-value risk-color" id="kpi-risk">–</div>
             <div class="kpi-sub" id="kpi-risky-files">–</div>
-            <div class="kpi-icon">🔥</div>
+            <div class="kpi-icon">RSK</div>
         </div>
     </div>
 </section>
@@ -346,7 +339,7 @@
 <section>
     <div class="scatter-hero">
         <div class="scatter-hero-header">
-            <h2>🌐 3D CodeBalance Space</h2>
+            <h2>3D CodeBalance Space</h2>
             <div class="scatter-legend">
                 <span><span class="legend-dot" style="background:var(--safe)"></span> Safe (0–3)</span>
                 <span><span class="legend-dot" style="background:var(--warn)"></span> Medium (4–6)</span>
@@ -410,9 +403,9 @@
                 <tr>
                     <th>Module</th>
                     <th>Functions</th>
-                    <th>⚡ Energy</th>
-                    <th>🔧 Debt</th>
-                    <th>🛡 Safety</th>
+                    <th>Energy</th>
+                    <th>Debt</th>
+                    <th>Safety</th>
                     <th>Risk Profile</th>
                 </tr>
             </thead>
@@ -426,7 +419,7 @@
     <div class="section-title">Functions Requiring Attention</div>
     <div class="tables-row">
         <div class="table-card">
-            <div class="table-card-title"><span style="color:var(--danger)">⚡</span> Highest Energy (Complexity)</div>
+            <div class="table-card-title"><span class="dot" style="background:var(--danger)"></span> Highest Energy (Complexity)</div>
             <table class="risk-table" id="table-energy">
                 <thead>
                     <tr>
@@ -439,7 +432,7 @@
             </table>
         </div>
         <div class="table-card">
-            <div class="table-card-title"><span style="color:var(--warn)">🔧</span> Highest Technical Debt</div>
+            <div class="table-card-title"><span class="dot" style="background:var(--warn)"></span> Highest Technical Debt</div>
             <table class="risk-table" id="table-debt">
                 <thead>
                     <tr>
@@ -452,7 +445,7 @@
             </table>
         </div>
         <div class="table-card">
-            <div class="table-card-title"><span style="color:var(--safe)">🛡</span> Highest Safety Risk</div>
+            <div class="table-card-title"><span class="dot" style="background:var(--safe)"></span> Highest Safety Risk</div>
             <table class="risk-table" id="table-safety">
                 <thead>
                     <tr>
@@ -472,10 +465,11 @@
 <script>
     const { api: _api, $: _$, pillColor: _pillColor, openExplainModal: _openModal, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
 
-    // Chart.js defaults
-    Chart.defaults.color = '#6c7086';
-    Chart.defaults.borderColor = '#313244';
-    Chart.defaults.font.family = 'Inter';
+    // Chart.js global refinement
+    Chart.defaults.color = '#9499b8';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 11;
 
     function dot(v) {
         const c = v >= 7 ? 'var(--danger)' : v >= 4 ? 'var(--warn)' : 'var(--safe)';
@@ -496,16 +490,38 @@
             data: {
                 labels: dist.labels,
                 datasets: [{
-                    label, data: dist.counts, backgroundColor: color + '33',
-                    borderColor: color, borderWidth: 2, borderRadius: 6
+                    label, 
+                    data: dist.counts, 
+                    backgroundColor: color + '22',
+                    borderColor: color, 
+                    borderWidth: 1.5, 
+                    borderRadius: 4,
+                    hoverBackgroundColor: color + '44',
+                    hoverBorderColor: color,
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a1a2e',
+                        titleColor: '#fff',
+                        bodyColor: '#9499b8',
+                        borderColor: color,
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: false,
+                        cornerRadius: 8,
+                    }
+                },
                 scales: {
-                    x: { grid: { color: '#23233a' } },
-                    y: { grid: { color: '#23233a' }, beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                    x: { ticks: { color: '#6c7086' } },
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { stepSize: 1, precision: 0, color: '#6c7086' }
+                    }
                 }
             }
         });
@@ -543,55 +559,60 @@
 
     // ── Enhanced 3D scatter with Safety-based color + narrative hover ──
     function render3D(pts) {
-        // Color based on Safety score (red-yellow-green gradient)
+        const { getPlotlyLayout } = window.LegacyLens;
+        
+        // Color based on Safety score (green-yellow-red gradient)
         const safetyColors = pts.map(p => p.safety);
-        // Marker size proportional to Energy (range 4-12)
-        const markerSizes = pts.map(p => 4 + (p.energy / 10) * 8);
+        // Marker size proportional to Energy (range 6-15)
+        const markerSizes = pts.map(p => 6 + (p.energy / 10) * 12);
 
-        Plotly.newPlot('plotly-scatter', [{
-            type: 'scatter3d', mode: 'markers',
+        const data = [{
+            type: 'scatter3d', 
+            mode: 'markers',
             x: pts.map(p => p.energy),
             y: pts.map(p => p.debt),
             z: pts.map(p => p.safety),
             text: pts.map(p => `${p.name.split('.').pop()}`),
             customdata: pts.map(p => [
-                p.name,                         // [0] qualified name
-                p.file.split('/').slice(-2).join('/'),  // [1] short path
-                p.energy,                       // [2]
-                p.debt,                         // [3]
-                p.safety,                       // [4]
-                p.grade || '?',              // [5] A-F grade
-                p.risk_label || 'Unknown',      // [6] narrative label
+                p.name,                         
+                p.file.split('/').slice(-2).join('/'),  
+                p.energy,                       
+                p.debt,                         
+                p.safety,                       
+                p.grade || '?',              
+                p.risk_label || 'Unknown',      
             ]),
             hovertemplate:
-                '<b>%{text}</b>  · <i>%{customdata[6]}</i>  Grade [%{customdata[5]}]<br>' +
-                '⚡ Energy: %{customdata[2]}<br>' +
-                '🔧 Debt: %{customdata[3]}<br>' +
-                '🛡 Safety: %{customdata[4]}<br>' +
+                '<b>%{text}</b><br>' +
+                '<i>%{customdata[6]}</i> (Grade %{customdata[5]})<br><br>' +
+                'Energy: %{customdata[2]}<br>' +
+                'Debt: %{customdata[3]}<br>' +
+                'Safety: %{customdata[4]}<br><br>' +
                 '📁 …/%{customdata[1]}<extra></extra>',
             marker: {
                 size: markerSizes,
                 color: safetyColors,
-                colorscale: [[0, '#34d399'], [0.3, '#34d399'], [0.5, '#fbbf24'], [0.7, '#f87171'], [1, '#dc2626']],
-                opacity: 0.88,
-                colorbar: {
-                    title: { text: 'Safety', font: { color: '#cdd6f4' } },
-                    tickfont: { color: '#6c7086' },
-                    len: 0.6
-                },
-                line: { width: 0.5, color: 'rgba(255,255,255,.12)' }
+                // Minimalist colorscale without glossy gradients
+                colorscale: [
+                    [0, 'var(--safe)'],
+                    [0.5, 'var(--warn)'],
+                    [1, 'var(--danger)']
+                ],
+                opacity: 0.9,
+                line: { width: 0.5, color: '#fff' }
             }
-        }], {
-            paper_bgcolor: '#181825', plot_bgcolor: '#181825',
-            font: { color: '#cdd6f4', family: 'Inter' },
-            scene: {
-                xaxis: { title: '⚡ Energy', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                yaxis: { title: '🔧 Debt', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                zaxis: { title: '🛡 Safety', gridcolor: '#313244', zerolinecolor: '#313244', tickfont: { color: '#6c7086' } },
-                bgcolor: '#181825',
-            },
-            margin: { l: 0, r: 0, t: 0, b: 0 },
-        }, { responsive: true, displaylogo: false });
+        }];
+
+        const layout = getPlotlyLayout('');
+        // Adjust layout slightly for hero scatter
+        layout.margin = { l: 0, r: 0, t: 0, b: 0 };
+        layout.scene.camera = { eye: { x: 1.5, y: 1.5, z: 1.2 } };
+
+        Plotly.newPlot('plotly-scatter', data, layout, { 
+            responsive: true, 
+            displaylogo: false,
+            modeBarButtonsToRemove: ['sendDataToCloud', 'editInChartStudio']
+        });
 
         // Click on a data point → open modal
         document.getElementById('plotly-scatter').on('plotly_click', function (data) {
@@ -616,8 +637,8 @@
             const fnShort = (trace.function || '').split('.').pop();
             label.textContent = `${fnShort}  (${trace.total_iterations} iteration${trace.total_iterations !== 1 ? 's' : ''}, SOP: ${trace.sop_variant || 'default'})`;
 
-            const verdictColor = { PASS: '#34d399', REVISE: '#fbbf24', FAIL: '#f87171' };
-            const verdictIcon = { PASS: '✓', REVISE: '⟳', FAIL: '✗' };
+            const verdictColor = { PASS: 'var(--safe)', REVISE: 'var(--warn)', FAIL: 'var(--danger)' };
+            const verdictIcon = { PASS: 'PASS', REVISE: 'REVISE', FAIL: 'FAIL' };
 
             // SVG timeline
             const W = container.offsetWidth || 600;
@@ -638,9 +659,9 @@
                 const color = verdictColor[it.verdict] || '#6c7086';
                 const icon = verdictIcon[it.verdict] || '?';
 
-                // Circle node
-                svg += `<circle cx="${cx}" cy="28" r="14" fill="${color}22" stroke="${color}" stroke-width="2"/>`;
-                svg += `<text x="${cx}" y="33" text-anchor="middle" fill="${color}" font-size="13" font-weight="bold">${icon}</text>`;
+                // Box node
+                svg += `<rect x="${cx - 18}" y="14" width="36" height="28" fill="${color}22" stroke="${color}" stroke-width="2"/>`;
+                svg += `<text x="${cx}" y="33" text-anchor="middle" fill="${color}" font-size="9" font-weight="bold">${icon}</text>`;
 
                 // Iteration number
                 svg += `<text x="${cx}" y="55" text-anchor="middle" fill="#6c7086" font-size="10">Iter ${it.iteration}</text>`;

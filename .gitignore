@@ -28,3 +28,18 @@ Thumbs.db
 apikey.env
 *.sqlite3
 legacylens_db/
+
+# Residuals and Output
+bandit_output.txt
+mypy_output.txt
+e2e_validation_results.md
+results/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
