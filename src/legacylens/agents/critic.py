@@ -85,7 +85,7 @@ class CritiqueResult:
         Inspired by Kawabe & Takano (2026): structured failure signals
         let the Writer target specific deficiencies rather than guessing
         from a flat list.  Categorizes issues into hallucination,
-        completeness, and safety buckets for targeted revision.
+        completeness, safety, and structural fidelity buckets.
         """
         parts = []
 
@@ -119,6 +119,24 @@ class CritiqueResult:
         safety = [i for i in self.issues if "unmentioned risk" in i.lower() or "risk" in i.lower()]
         if safety:
             parts.append("SAFETY RISKS TO ADDRESS: " + ", ".join(safety))
+
+        # Structural fidelity issues — variable names, ordering, etc.
+        structural = [
+            i
+            for i in self.issues
+            if "variable name" in i.lower()
+            or "control flow" in i.lower()
+            or "method call order" in i.lower()
+            or "annotation" in i.lower()
+            or "structural" in i.lower()
+            or "sequence" in i.lower()
+            or "paraphras" in i.lower()
+        ]
+        if structural:
+            parts.append(
+                "STRUCTURAL FIDELITY FIX (use exact code terms): "
+                + ", ".join(structural)
+            )
 
         # General suggestions
         if self.suggestions:
@@ -289,6 +307,11 @@ MUST_COVER_QUESTIONS = [
     ("purpose", r"\b(purpose|does|handles|processes|responsible|performs)\b"),
     ("error handling", r"\b(error|exception|catch|throw|fail|invalid)\b"),
     ("side effects", r"\b(modifies|updates|saves|writes|deletes|sends|calls|invokes)\b"),
+    # Structural fidelity markers — ensure the explanation is precise enough
+    # for accurate code regeneration
+    ("variable names", r"\b[a-z]+[A-Z]\w+\b"),  # camelCase identifiers present
+    ("control flow", r"\b(if|else|for|while|switch|case|when|then|first|next|otherwise)\b"),
+    ("method calls", r"\b\w+\(\b"),  # method invocation patterns
 ]
 
 
@@ -389,7 +412,11 @@ def _llm_critique(
     Returns:
         (passed, confidence, issues, suggestions)
     """
-    system_prompt = "You are a code review expert. Your job is to verify if an explanation accurately describes the code."
+    system_prompt = (
+        "You are a code review expert. Your job is to verify if an explanation "
+        "accurately and STRUCTURALLY describes the code. An explanation is only "
+        "good if someone could regenerate the EXACT original code from it."
+    )
 
     user_query = f"""SOURCE CODE:
 ```
@@ -403,7 +430,22 @@ VERIFICATION TASK:
 1. Check if every claim in the explanation is supported by the code
 2. Look for hallucinations (claims not in the code)
 3. Check for missing critical functionality
-4. Rate your confidence in the explanation's accuracy (0-100)
+4. **Structural Fidelity** — verify ALL of the following:
+   a. Does the explanation use the EXACT variable names from the code?
+      (e.g., "lastName" not "ownerLastName", "owners" not "ownerList")
+   b. Does it describe the PRECISE sequence of statements in order?
+      (e.g., "first checks if lastName is empty, THEN queries the repository")
+   c. Are method calls listed in the CORRECT ORDER as they appear in the code?
+   d. Are ALL annotations (e.g., @GetMapping, @RequestParam) and their
+      parameter values mentioned?
+   e. Does it avoid paraphrasing that would produce DIFFERENT code structure?
+      (e.g., "validates input" is too vague — say "checks if owner.getLastName()
+      is empty using the .isEmpty() method")
+5. Rate your confidence in the explanation's accuracy (0-100)
+
+IMPORTANT: If the explanation uses different variable names, different method
+call order, or vague paraphrasing, mark it as FAILED and list the specific
+structural mismatches in ISSUES.
 
 Respond in this EXACT format:
 PASSED: [yes/no]

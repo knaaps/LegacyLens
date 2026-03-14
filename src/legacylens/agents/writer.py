@@ -82,7 +82,13 @@ STATIC ANALYSIS FACTS:
 4. Mention SIDE EFFECTS (what it modifies, saves, calls, or invokes)
 5. Reference the static analysis facts where relevant
 6. Address every MUST-COVER QUESTION above (if any)
-7. Keep it concise but complete
+7. **STRUCTURAL PRECISION** (critical for verification):
+   - Use the EXACT variable names from the code (e.g., "lastName", not "ownerLastName")
+   - Describe statements in their EXACT ORDER as they appear in the code
+   - List method calls in sequence (e.g., "calls owner.getLastName(), then calls .isEmpty()")
+   - Include ALL annotations with their parameter values (e.g., "@GetMapping(\"/owners\")")
+   - Do NOT paraphrase — describe what the code does literally, step by step
+8. Keep it concise but complete
 
 EXPLANATION:"""
 
