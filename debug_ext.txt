@@ -1,23 +1,19 @@
 @GetMapping("/owners")
 public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result, Model model) {
-    if (owner.getLastName() == null) {
-        owner.setLastName(""); // Broad search for no last name input
+    if (owner == null || owner.getLastName() == null || owner.getLastName().isEmpty()) {
+        return "owners/findOwners"; // Return search form with errors/results
     }
     
-    List<Owner> ownersResults = findPaginatedForOwnersLastName(page, owner.getLastName());
-    
-    if (ownersResults.isEmpty()) {
-        result.rejectValue("lastName", "notFound"); // No results found
+    List<Owner> owners = ownerRepository.findByLastName(owner.getLastName());
+    if (owners == null || owners.isEmpty()) {
+        result.rejectValue("lastName", "notFound"); // Adds a validation error to BindingResult and redisplays the form
         return "owners/findOwners"; 
+    } else if (owners.size() > 1) {
+        addPaginationModel(model, page, owners); // Modifies model with paginated data via addPaginationModel method
+        return "owners/list"; // Returns paginated results view
     } else {
-        model.addAttribute("owners", ownersResults);
-        addPaginationModel(model, page, ownersResults);
-        
-        if (ownersResults.size() == 1) {
-            Owner theOwner = ownersResults.get(0);
-            return "redirect:/owners/" + theOwner.getId(); // Redirect to specific owner detail page
-        } else {
-            return "owners/findOwners"; 
-        }
+        Owner foundOwner = owners.get(0);
+        model.addAttribute("owner", foundOwner); // Adds the owner to the model for display in the details view
+        return "redirect:/owners/" + foundOwner.getId(); // Triggers a redirect (URL change) when a single owner is found
     }
 }

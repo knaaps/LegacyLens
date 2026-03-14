@@ -51,9 +51,18 @@ def _flatten_ast(node) -> list[str]:
     "for_statement", "method_invocation") while ignoring variable names,
     whitespace, and formatting differences.
 
-    We omit depth to remove sensitivity to outer wrappers (e.g. if the LLM wraps
-    the generated method in a dummy class, the depth offset doesn't break the match).
+    By using only types (no depth), we remove sensitivity to outer wrappers
+    (e.g. if the LLM wraps the generated method in a dummy class).
     """
+    # Filter out noise nodes like comments, punctuation, and errors
+    noise_types = {
+        "comment", "line_comment", "block_comment", "ERROR",
+        ";", "(", ")", "{", "}", ",", ".", "[", "]"
+    }
+    
+    if node.type in noise_types:
+        return []
+        
     result = [node.type]
     for child in node.children:
         result.extend(_flatten_ast(child))
@@ -132,8 +141,8 @@ def compute_ast_similarity(original: str, regenerated: str, language: str) -> fl
     Compare two code snippets by their AST structure.
 
     Uses a weighted combination:
-        60 %  — Depth-aware sequence similarity (SequenceMatcher on
-                 (node_type, depth) tuples, preserving ordering)
+        60 %  — Structural similarity (SequenceMatcher on flat list of
+                 node types, preserving ordering but ignoring depth)
         40 %  — API call overlap (Jaccard on method-call names, so
                  the regeneration must call the same methods)
 

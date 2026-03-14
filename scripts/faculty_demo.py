@@ -86,8 +86,7 @@ def _quiet():
 
 
 def _pause() -> None:
-    console.print("\n[dim]  ↵ Enter to continue...[/dim]", end="")
-    input()
+    pass
 
 
 # ═══════════════════════════════════════════════════════════
