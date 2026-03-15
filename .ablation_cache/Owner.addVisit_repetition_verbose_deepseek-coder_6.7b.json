@@ -1,0 +1,21 @@
+{
+  "row": {
+    "arm": "repetition_verbose",
+    "arm_label": "LegacyLens + Repetition (Verbose)",
+    "function": "Owner.addVisit",
+    "category": "Domain Logic",
+    "verified": false,
+    "confidence": 100,
+    "fidelity": 1.0,
+    "iterations": 2,
+    "verdict": "FAIL",
+    "hallucination_free": false,
+    "completeness_pct": 100.0,
+    "bleu1": 0.09748427672955975,
+    "bleu2": 0.04416403785488959,
+    "rouge1": 0.17415730337078653,
+    "rouge2": 0.07909604519774012,
+    "rougeL": 0.1348314606741573
+  },
+  "explanation": "**EXPLANATION**\n\n1. **PURPOSE**  \n   This method adds a `Visit` object to a `Pet` identified by `petId`. It validates that the input parameters are non-null and that the referenced `Pet` exists before performing the addition.\n\n2. **PARAMETERS & RETURN VALUE**  \n   - Accepts:  \n     - `Integer petId`: The ID of the pet to associate with the visit.  \n     - `Visit visit`: The visit to add to the pet.  \n   - Returns: `void` (no return value).\n\n3. **ERROR HANDLING**  \n   - **Validation**:  \n     - `Assert.notNull(petId, \"Pet identifier must not be null!\")`: Fails if `petId` is null.  \n     - `Assert.notNull(visit, \"Visit must not be null!\")`: Fails if `visit` is null.  \n     - `Assert.notNull(pet, \"Invalid Pet identifier!\")`: Fails if `getPet(petId)` returns null (invalid `petId`).  \n   - **Exceptions**: Violations throw `IllegalArgumentException` (or similar) via the `Assert.notNull` utility.\n\n4. **SIDE EFFECTS**  \n   - Modifies the `Pet` object by calling `pet.addVisit(visit)`, which adds the visit to the pet's collection of visits.  \n   - Invokes `getPet(petId)`, which may load data from a database or external source (implementation-dependent).\n\n5. **STATIC ANALYSIS**  \n   - **Complexity**: 1 (linear execution path with no branches).  \n   - **Lines**: 7 (includes method declaration and 7 statements).  \n   - **Calls**:  \n     1. `Assert.notNull(petId, ...)`,  \n     2. `Assert.notNull(visit, ...)`,  \n     3. `getPet(petId)`,  \n     4. `Assert.notNull(pet, ...)`,  \n     5. `pet.addVisit(visit)`.\n\n6. **STRUCTURAL PRECISION**  \n   - **Order of Execution**:  \n     1. Validates `petId` is non-null.  \n     2. Validates `visit` is non-null.  \n     3. Retrieves `Pet` via `getPet(petId)`.  \n     4. Validates retrieved `Pet` is non-null.  \n     5. Adds `visit` to the `Pet` via `pet.addVisit(visit)`.  \n   - **Variables**: Uses exact names `petId`, `visit`, and `pet`.  \n   - **Method Calls**:  \n     - `Assert.notNull(petId, \"Pet identifier must not be null!\")`  \n     - `Assert.notNull(visit, \"Visit must not be null!\")`  \n     - `getPet(petId)`  \n     - `Assert.notNull(pet, \"Invalid Pet identifier!\")`  \n     - `pet.addVisit(visit)`  \n\n**SUMMARY**  \nThis method ensures a valid `Visit` is added to a valid `Pet` identified by `petId`, with explicit null-checking and no return value. It relies on `getPet()` to resolve the `Pet` and `pet.addVisit()` to mutate the pet's state."
+}

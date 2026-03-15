@@ -26,8 +26,28 @@ import argparse
 import csv
 import os
 import sys
+import json
+import sqlite3
+import pandas as pd
 from datetime import datetime
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+
+def load_corpus():
+    conn = sqlite3.connect("results/corpus.db")
+    # assume table already exists with columns: function_id, code, context_json, reference, codebalance
+    df = pd.read_sql("SELECT * FROM functions", conn)  # use pandas or raw fetch
+    records = df.to_dict('records')
+    for r in records:
+        r["name"] = r["function_id"]
+        if "category" not in r:
+            r["category"] = "DB Function"
+        if "context_json" in r and r["context_json"]:
+            r["context"] = json.loads(r["context_json"])
+        else:
+            r["context"] = {}
+    return records
 
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -38,6 +58,7 @@ from legacylens.agents.provider import llm_generate
 # Import BLEU/ROUGE scorer (same scripts/ directory, no extra deps)
 sys.path.insert(0, str(Path(__file__).parent))
 from metrics_scorer import score_explanation
+from disk_cache import AblationCache, explanation_hash
 
 # ---------------------------------------------------------------------------
 # Test corpus — 10 PetClinic + 3 Apache Ant-style functions
@@ -557,97 +578,101 @@ def run_rag_only(fn: dict, writer_model: str = "deepseek-coder:6.7b") -> str:
 # ---------------------------------------------------------------------------
 
 
-def run_arm(arm_name: str, arm_config: dict, functions: list, writer_model: str) -> list[dict]:
-    """Run a single ablation arm on all functions."""
+def process_function(func_data, arm_list, writer_model):
+    cache = AblationCache()
     results = []
-    label = arm_config["label"]
-    rep_variant = arm_config.get("repetition_variant")
-    is_zero_shot = arm_config.get("_zero_shot", False)
-    is_rag_only = arm_config.get("_rag_only", False)
-
-    print(f"\n{'=' * 70}")
-    print(f"ARM: {label}")
-    print(f"{'=' * 70}")
-
-    for fn in functions:
-        name = fn["name"]
-        print(f"  {name} ...", end=" ", flush=True)
+    
+    for arm_name in arm_list:
+        arm_config = ARMS[arm_name]
+        label = arm_config["label"]
+        rep_variant = arm_config.get("repetition_variant")
+        is_zero_shot = arm_config.get("_zero_shot", False)
+        is_rag_only = arm_config.get("_rag_only", False)
+        name = func_data["name"]
 
         try:
-            if is_zero_shot:
-                explanation = run_zero_shot(fn, writer_model=writer_model)
-                row = {
-                    "arm": arm_name,
-                    "arm_label": label,
-                    "function": name,
-                    "category": fn["category"],
-                    "verified": False,
-                    "confidence": 0,
-                    "fidelity": None,
-                    "iterations": 1,
-                    "verdict": "ZERO_SHOT",
-                    "hallucination_free": None,
-                    "completeness_pct": None,
-                }
-
-            elif is_rag_only:
-                explanation = run_rag_only(fn, writer_model=writer_model)
-                row = {
-                    "arm": arm_name,
-                    "arm_label": label,
-                    "function": name,
-                    "category": fn["category"],
-                    "verified": False,
-                    "confidence": 0,
-                    "fidelity": None,
-                    "iterations": 1,
-                    "verdict": "RAG_ONLY",
-                    "hallucination_free": None,
-                    "completeness_pct": None,
-                }
-
+            cached = cache.get_explanation(name, arm_name, writer_model)
+            if cached:
+                print(f"Cache hit: {name} - {arm_name}")
+                row = cached["row"]
+                explanation = cached["explanation"]
             else:
-                res = generate_verified_explanation(
-                    code=fn["code"],
-                    context=fn["context"],
-                    max_iterations=3,
-                    run_regeneration=True,
-                    run_finalizer=False,
-                    language="java",
-                    repetition_variant=rep_variant,
-                    writer_model=writer_model,
-                )
-                explanation = res.explanation
-                row = {
-                    "arm": arm_name,
-                    "arm_label": label,
-                    "function": name,
-                    "category": fn["category"],
-                    "verified": res.verified,
-                    "confidence": res.confidence,
-                    "fidelity": res.fidelity_score,
-                    "iterations": res.iterations,
-                    "verdict": res.verdict,
-                    "hallucination_free": res.critique.factual_passed if res.critique else None,
-                    "completeness_pct": res.critique.completeness_pct if res.critique else None,
-                }
-
-            # BLEU/ROUGE vs gold reference
-            ref = fn.get("reference", "")
-            if ref and explanation:
-                nlp_scores = score_explanation(explanation, ref)
-                row.update(nlp_scores)
+                if is_zero_shot:
+                    explanation = run_zero_shot(func_data, writer_model=writer_model)
+                    row = {
+                        "arm": arm_name,
+                        "arm_label": label,
+                        "function": name,
+                        "category": func_data["category"],
+                        "verified": False,
+                        "confidence": 0,
+                        "fidelity": None,
+                        "iterations": 1,
+                        "verdict": "ZERO_SHOT",
+                        "hallucination_free": None,
+                        "completeness_pct": None,
+                    }
+    
+                elif is_rag_only:
+                    explanation = run_rag_only(func_data, writer_model=writer_model)
+                    row = {
+                        "arm": arm_name,
+                        "arm_label": label,
+                        "function": name,
+                        "category": func_data["category"],
+                        "verified": False,
+                        "confidence": 0,
+                        "fidelity": None,
+                        "iterations": 1,
+                        "verdict": "RAG_ONLY",
+                        "hallucination_free": None,
+                        "completeness_pct": None,
+                    }
+    
+                else:
+                    res = generate_verified_explanation(
+                        code=func_data["code"],
+                        context=func_data["context"],
+                        max_iterations=3,
+                        run_regeneration=True,
+                        run_finalizer=False,
+                        language="java",
+                        repetition_variant=rep_variant,
+                        writer_model=writer_model,
+                    )
+                    explanation = res.explanation
+                    row = {
+                        "arm": arm_name,
+                        "arm_label": label,
+                        "function": name,
+                        "category": func_data["category"],
+                        "verified": res.verified,
+                        "confidence": res.confidence,
+                        "fidelity": res.fidelity_score,
+                        "iterations": res.iterations,
+                        "verdict": res.verdict,
+                        "hallucination_free": res.critique.factual_passed if res.critique else None,
+                        "completeness_pct": res.critique.completeness_pct if res.critique else None,
+                    }
+    
+                # BLEU/ROUGE vs gold reference
+                ref = func_data.get("reference", "")
+                if ref and explanation:
+                    nlp_scores = score_explanation(explanation, ref)
+                    row.update(nlp_scores)
+                
+                cache.store_explanation(name, arm_name, writer_model, {"row": row, "explanation": explanation})
 
             fid = f"{row.get('fidelity', 0) or 0:.0%}" if row.get("fidelity") is not None else "N/A"
-            r1 = f"{row.get('rouge1', 0):.2f}"
-            print(f"✓ conf={row.get('confidence', 0)}% fid={fid} rouge1={r1}")
+            r1 = f"{row.get('rouge1', 0):.2f}" if "rouge1" in row else "0.00"
+            print(f"[{name} - {arm_name}] ✓ conf={row.get('confidence', 0)}% fid={fid} rouge1={r1}")
 
         except Exception as e:
             row = {
                 "arm": arm_name,
                 "arm_label": label,
                 "function": name,
-                "category": fn["category"],
+                "category": func_data["category"],
                 "verified": False,
                 "confidence": 0,
                 "fidelity": None,
@@ -657,7 +682,7 @@ def run_arm(arm_name: str, arm_config: dict, functions: list, writer_model: str)
                 "completeness_pct": None,
                 "error": str(e),
             }
-            print(f"ERROR: {e}")
+            print(f"ERROR on {name} - {arm_name}: {e}")
 
         results.append(row)
 
@@ -822,14 +847,26 @@ def main():
     print(f"LLM Provider: {provider}")
     print(f"Writer model: {args.writer_model}")
     print(f"Arms to run: {', '.join(selected)}")
-    print(f"Test corpus: {len(FUNCTIONS)} functions")
+
+    test_functions = load_corpus()
+    print(f"Test corpus: {len(test_functions)} functions")
 
     all_results = []
-    summaries = {}
+    
+    with ThreadPoolExecutor(max_workers=6) as executor:  # safe for Groq
+        future_to_func = {executor.submit(process_function, f, selected, args.writer_model): f for f in test_functions}
+        for future in as_completed(future_to_func):
+            f = future_to_func[future]
+            print(f"Completed {f.get('name', f.get('function_id', 'unknown'))}")
+            try:
+                func_results = future.result()
+                all_results.extend(func_results)
+            except Exception as e:
+                print(f"Exception processing {f.get('name', 'unknown')}: {e}")
 
+    summaries = {}
     for arm_name in selected:
-        arm_results = run_arm(arm_name, ARMS[arm_name], FUNCTIONS, args.writer_model)
-        all_results.extend(arm_results)
+        arm_results = [r for r in all_results if r["arm"] == arm_name]
         summaries[arm_name] = compute_summary(arm_results)
 
     # Save outputs
@@ -860,4 +897,40 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--precompute" in sys.argv:
+        # call your existing parser + CodeBalance logic to populate the DB once
+        # (reuse your current analysis/hint_enricher.py code)
+        from legacylens.analysis.hint_enricher import enrich_hints
+        
+        out_dir = Path("results")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(out_dir / "corpus.db")
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS functions (
+                function_id TEXT PRIMARY KEY,
+                category TEXT,
+                code TEXT,
+                context_json TEXT,
+                reference TEXT,
+                codebalance TEXT
+            )
+        ''')
+        for fn in FUNCTIONS:
+            hints = enrich_hints(fn["code"])
+            context = fn.get("context", {})
+            context["hints"] = hints.must_cover
+            conn.execute('''
+                INSERT OR REPLACE INTO functions (function_id, category, code, context_json, reference, codebalance)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                fn["name"],
+                fn["category"],
+                fn["code"],
+                json.dumps(context),
+                fn.get("reference", ""),
+                str(hints.patterns)
+            ))
+        conn.commit()
+        print("Database populated successfully.")
+    else:
+        main()

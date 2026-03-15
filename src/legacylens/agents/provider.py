@@ -33,6 +33,7 @@ def _call_ollama(model: str, prompt: str, temperature: float) -> str:
 def _call_groq(model: str, prompt: str, temperature: float) -> str:
     """Call the Groq cloud API."""
     from groq import Groq
+    import time
 
     # Load API key from apikey.env if not already in environment
     api_key = os.environ.get("GROQ_API_KEY")
@@ -40,11 +41,25 @@ def _call_groq(model: str, prompt: str, temperature: float) -> str:
         api_key = _load_api_key()
 
     client = Groq(api_key=api_key)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=temperature,
-    )
+
+    def groq_call_with_backoff(prompt, max_retries=5):
+        for attempt in range(max_retries):
+            try:
+                return client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=temperature,
+                )
+            except Exception as e:
+                if "429" in str(e):
+                    wait = (2 ** attempt) + 1
+                    print(f"Rate limit - retry in {wait}s")
+                    time.sleep(wait)
+                else:
+                    raise
+        raise TimeoutError
+
+    response = groq_call_with_backoff(prompt)
     text = response.choices[0].message.content.strip()
 
     # Strip Qwen3's chain-of-thought <think>...</think> tags.

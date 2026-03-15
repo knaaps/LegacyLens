@@ -1,0 +1,21 @@
+{
+  "row": {
+    "arm": "repetition_verbose",
+    "arm_label": "LegacyLens + Repetition (Verbose)",
+    "function": "AntTask.compileFile",
+    "category": "Legacy \u2014 File Processing",
+    "verified": true,
+    "confidence": 95,
+    "fidelity": 0.73,
+    "iterations": 1,
+    "verdict": "PASS",
+    "hallucination_free": true,
+    "completeness_pct": 100.0,
+    "bleu1": 0.07512953367875648,
+    "bleu2": 0.007792207792207792,
+    "rouge1": 0.13272311212814644,
+    "rouge2": 0.01379310344827586,
+    "rougeL": 0.08237986270022885
+  },
+  "explanation": "This Java method is named `compileFile` and its purpose is to compile a source file into an output stream. It reads data from the input file in chunks of 1024 bytes, then writes this data to an output stream. The name 'outputStream' is not defined in this code snippet but it would be expected that it is an instance variable or passed as a parameter to this method.\n\nThe parameters it accepts are `sourceFile` which should be of type File and represents the source file to compile. It doesn't return any value because its purpose is to modify the state of 'outputStream'. \n\nThis code has error handling for exceptions related to reading from or writing to files, as well as closing a potentially open FileInputStream. If an exception occurs during these operations (like if the source file does not exist), it throws a BuildException with a message indicating that compilation failed for the specific source file. \n\nThe side effects of this method are modifying 'outputStream' by writing data from the input file to it. It reads and writes data, but doesn't return any value or produce an output.\n\nAs per static analysis facts:\n- Complexity is 5 as there are nested try-catch blocks which makes the code complex.\n- Lines of code is 17 including comments and whitespace.\n- The method calls include read, write, and close.\n\nThe detected patterns include 'risk:swallowed_exception' and 'web:exception_handler'. These indicate that there might be a risk of an exception being swallowed silently or it could be used as an exception handler in a web application. \n\nAs per the MUST-COVER QUESTIONS, this code does not have any empty catch blocks but it is important to note that if `fis` was null at some point and we tried to close it, there would be a NullPointerException. The caller should ensure that `sourceFile` exists before calling this method.\n\nIn terms of structural precision:\n- Variable names are 'fis', 'buffer', 'bytesRead' etc., which match the exact variable names from the code.\n- Statements in order are reading data into buffer, checking if we read anything, and writing it to outputStream.\n- Method calls are `new FileInputStream(sourceFile)` for creating input stream, `fis.read(buffer)` for reading data, and `outputStream.write(buffer, 0, bytesRead)` for writing data.\n- There are no annotations in this code snippet."
+}

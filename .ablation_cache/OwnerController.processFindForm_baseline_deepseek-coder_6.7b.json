@@ -1,0 +1,21 @@
+{
+  "row": {
+    "arm": "baseline",
+    "arm_label": "LegacyLens (Full Pipeline, no repetition)",
+    "function": "OwnerController.processFindForm",
+    "category": "Complex Data Flow",
+    "verified": true,
+    "confidence": 100,
+    "fidelity": 0.9,
+    "iterations": 1,
+    "verdict": "PASS",
+    "hallucination_free": true,
+    "completeness_pct": 100.0,
+    "bleu1": 0.11475409836065574,
+    "bleu2": 0.030136986301369864,
+    "rouge1": 0.1981132075471698,
+    "rouge2": 0.05213270142180095,
+    "rougeL": 0.12264150943396228
+  },
+  "explanation": "**EXPLANATION**\n\n**PURPOSE**  \nThis Spring MVC controller method handles GET requests to `/owners` for searching `Owner` records by last name with pagination. It validates input, searches for owners, and returns appropriate views or redirects based on search results.\n\n---\n\n**PARAMETERS & RETURN VALUE**  \n- **Parameters**:  \n  - `@RequestParam(defaultValue = \"1\") int page`: Current page number (default 1).  \n  - `Owner owner`: Data object containing `lastName` input from the form.  \n  - `BindingResult result`: Stores validation errors.  \n  - `Model model`: Used to pass data to the view.  \n- **Return**: A `String` representing the view name (e.g., `\"owners/findOwners\"`, `\"redirect:/owners/{id}\"`).\n\n---\n\n**ERROR HANDLING**  \n1. **Empty search results**:  \n   - If `ownersResults.isEmpty()` is true, adds a validation error to `result` with code `\"notFound\"` and message `\"not found\"`.  \n   - Returns the `\"owners/findOwners\"` view to display the error.  \n2. **No explicit exception handling**: Relies on Spring's default behavior for uncaught exceptions.  \n\n---\n\n**SIDE EFFECTS**  \n1. Modifies `model` by calling `addPaginationModel(page, model, ownersResults)`, which adds pagination data (e.g., page numbers).  \n2. Invokes `findPaginatedForOwnersLastName(page, lastName)`, which queries a database or repository.  \n3. May trigger a redirect to `/owners/{id}` if exactly one owner is found.  \n\n---\n\n**STATIC ANALYSIS REFERENCE**  \n- **Complexity 5**: Derived from conditional branches (`isEmpty()`, `getTotalElements() == 1`).  \n- **Lines 17**: Matches the code's length.  \n- **Calls**:  \n  1. `owner.getLastName()`  \n  2. `findPaginatedForOwnersLastName(page, lastName)`  \n  3. `ownersResults.isEmpty()`  \n  4. `ownersResults.getTotalElements()`  \n  5. `ownersResults.iterator().next()`  \n  6. `addPaginationModel(page, model, ownersResults)`  \n\n---\n\n**MUST-COVER QUESTIONS**  \n1. **Input validation**:  \n   - Validates that `lastName` is non-null (sets to `\"\"` if null).  \n   - Validates that `findPaginatedForOwnersLastName` returns non-empty results.  \n   - **On failure**: Adds `result.rejectValue(\"lastName\", \"notFound\", \"not found\")` and returns `\"owners/findOwners\"` view.  \n\n2. **Redirect target**:  \n   - **Target**: `redirect:/owners/{id}`.  \n   - **Triggered when**: `ownersResults.getTotalElements() == 1`, i.e., exactly one owner matches the search.  \n\n---\n\n**STRUCTURAL PRECISION**  \n1. **Exact variable names**: `lastName`, `ownersResults`, `page`, etc.  \n2. **Statement order**:  \n   - `String lastName = owner.getLastName();`  \n   - `if (lastName == null) { lastName = \"\"; }`  \n   - `Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);`  \n   - `if (ownersResults.isEmpty()) { ... }`  \n   - `if (ownersResults.getTotalElements() == 1) { ... }`  \n3. **Annotations**: `@GetMapping(\"/owners\")` with no additional parameters.  \n4. **Method calls in sequence**:  \n   - `owner.getLastName()`  \n   - `findPaginatedForOwnersLastName(page, lastName)`  \n   - `isEmpty()`  \n   - `getTotalElements()`  \n   - `iterator().next()`  \n   - `addPaginationModel(page, model, ownersResults)`  \n\n--- \n\nThis method ensures a user can search for owners by last name, with pagination and validation, while handling edge cases like no results or single-result redirects."
+}

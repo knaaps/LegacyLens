@@ -1,0 +1,21 @@
+{
+  "row": {
+    "arm": "repetition_x3",
+    "arm_label": "LegacyLens + Repetition (x3)",
+    "function": "PetController.processUpdateForm",
+    "category": "Update \u2014 Name/Date Validation",
+    "verified": true,
+    "confidence": 100,
+    "fidelity": 0.874,
+    "iterations": 2,
+    "verdict": "PASS",
+    "hallucination_free": true,
+    "completeness_pct": 100.0,
+    "bleu1": 0.08051948051948052,
+    "bleu2": 0.041666666666666664,
+    "rouge1": 0.14726840855106887,
+    "rouge2": 0.07637231503579951,
+    "rougeL": 0.11401425178147269
+  },
+  "explanation": "**EXPLANATION**\n\n**1. PURPOSE**  \nThis method handles HTTP POST requests to update a pet's details for an owner. It validates the input data, prevents duplicate pet names, checks for invalid birth dates, and redirects to the owner's page on success.\n\n**2. PARAMETERS AND RETURN VALUE**  \n- **Parameters**:  \n  - `Owner owner`: The owner of the pet.  \n  - `@Valid Pet pet`: The updated pet data (validated via `@Valid`).  \n  - `BindingResult result`: Captures validation errors for `pet`.  \n  - `RedirectAttributes redirectAttributes`: Used to pass flash attributes during redirect.  \n- **Return**: A `String` representing the view name (`VIEWS_PETS_CREATE_OR_UPDATE_FORM` on error) or a redirect to `/owners/{ownerId}` on success.\n\n**3. ERROR HANDLING**  \n- **Duplicate Pet Name**:  \n  - Extracts `pet.getName()`.  \n  - Calls `owner.getPet(petName, false)` to check if another pet with the same name exists (excluding the current `pet` via `!Objects.equals(existingPet.getId(), pet.getId())`).  \n  - If found, adds a validation error via `result.rejectValue(\"name\", \"duplicate\", \"already exists\")`.  \n- **Future Birth Date**:  \n  - Compares `pet.getBirthDate()` with `LocalDate.now()`.  \n  - If the birth date is in the future, calls `result.rejectValue(\"birthDate\", \"typeMismatch.birthDate\")`.  \n- On any validation error (`result.hasErrors()`), returns `VIEWS_PETS_CREATE_OR_UPDATE_FORM` to redisplay the form.\n\n**4. SIDE EFFECTS**  \n- Calls `updatePetDetails(owner, pet)` to persist changes.  \n- Adds a flash message via `redirectAttributes.addFlashAttribute(\"message\", \"Pet details has been edited\")`.  \n- Performs a redirect to `/owners/{ownerId}` using `redirect:/owners/{ownerId}`.\n\n**5. STATIC ANALYSIS**  \n- **Complexity 6**: Arises from nested conditionals (duplicate check, birth date check, error handling).  \n- **Method Calls**:  \n  1. `StringUtils.hasText(petName)`  \n  2. `owner.getPet(petName, false)`  \n  3. `Objects.equals(existingPet.getId(), pet.getId())`  \n  4. `result.rejectValue(\"name\", \"duplicate\", \"already exists\")`  \n  5. `result.rejectValue(\"birthDate\", \"typeMismatch.birthDate\")`  \n\n**6. MUST-COVER QUESTIONS**  \n- **Input Validation**:  \n  - Checks for duplicate pet names (via `owner.getPet()`) and future birth dates.  \n  - On failure, returns the form view (`VIEWS_PETS_CREATE_OR_UPDATE_FORM`) with errors.  \n- **Redirect Target**:  \n  - Redirects to `redirect:/owners/{ownerId}` **only if** `result.hasErrors()` is false (i.e., validation passes).  \n\n**7. STRUCTURAL PRECISION**  \n- **Annotations**: `@PostMapping(\"/pets/{petId}/edit\")`.  \n- **Order of Execution**:  \n  1. `String petName = pet.getName()`  \n  2. `StringUtils.hasText(petName)`  \n  3. `owner.getPet(petName, false)`  \n  4. `Objects.equals(existingPet.getId(), pet.getId())`  \n  5. `result.rejectValue(...)` (twice for name and birthDate)  \n  6. `updatePetDetails(owner, pet)`  \n  7. `redirectAttributes.addFlashAttribute(...)`  \n\n**8. CONCISE SUMMARY**  \nThis method validates and processes pet updates, ensuring no duplicate names or future birth dates. It returns the form on error or redirects to the owner's page on success."
+}

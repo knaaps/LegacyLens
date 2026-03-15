@@ -1,0 +1,21 @@
+{
+  "row": {
+    "arm": "repetition_simple",
+    "arm_label": "LegacyLens + Repetition (Simple)",
+    "function": "Owner.addVisit",
+    "category": "Domain Logic",
+    "verified": true,
+    "confidence": 85,
+    "fidelity": 1.0,
+    "iterations": 1,
+    "verdict": "PASS",
+    "hallucination_free": true,
+    "completeness_pct": 100.0,
+    "bleu1": 0.13333333333333333,
+    "bleu2": 0.05670103092783505,
+    "rouge1": 0.22317596566523606,
+    "rouge2": 0.09523809523809523,
+    "rougeL": 0.18025751072961377
+  },
+  "explanation": "**EXPLANATION:**\n\n1. **PURPOSE**  \n   This method adds a `Visit` object to a `Pet` identified by `petId`.\n\n2. **PARAMETERS & RETURN VALUE**  \n   - Accepts `Integer petId` and `Visit visit`.  \n   - Returns `void`.\n\n3. **ERROR HANDLING**  \n   - Validates `petId` and `visit` are non-null using `Assert.notNull()`, throwing an exception if violated.  \n   - Validates the retrieved `Pet` object is non-null (ensures valid `petId`).\n\n4. **SIDE EFFECTS**  \n   - Modifies the `Pet` object by calling `pet.addVisit(visit)`.  \n   - No direct persistence/saving; relies on `pet.addVisit()` to handle state changes.\n\n5. **STATIC ANALYSIS**  \n   - **Complexity 1**: Linear execution path with no branches.  \n   - **7 lines**: 3 `Assert.notNull` calls, 1 `getPet`, 1 `addVisit`.  \n   - **Calls**: `Assert.notNull(petId, ...)`, `Assert.notNull(visit, ...)`, `getPet(petId)`, `pet.addVisit(visit)`.\n\n6. **STRUCTURAL PRECISION**  \n   - **Order of execution**:  \n     1. `Assert.notNull(petId, \"Pet identifier must not be null!\")`  \n     2. `Assert.notNull(visit, \"Visit must not be null!\")`  \n     3. `Pet pet = getPet(petId)`  \n     4. `Assert.notNull(pet, \"Invalid Pet identifier!\")`  \n     5. `pet.addVisit(visit)`  \n   - **Exact method calls**: `Assert.notNull()`, `getPet(petId)`, `pet.addVisit(visit)`.  \n\n**MUST-COVER QUESTIONS ADDRESSED**  \n- Parameters: `petId`, `visit` (both validated).  \n- Method calls: All 4 calls listed explicitly.  \n- Side effects: Mutation of `Pet` via `addVisit()`.  \n- Error handling: 3 validation checks via `Assert.notNull()`."
+}

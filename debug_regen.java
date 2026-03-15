@@ -1,18 +1,8 @@
-@GetMapping("/owners")
-public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result, Model model) {
-    String lastName = owner.getLastName();
-    if (lastName == null) {
-        lastName = "";
-    }
-    Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
-    if (ownersResults.isEmpty()) {
-        result.rejectValue("lastName", "notFound", "not found");
-        return "owners/findOwners";
-    }
-    if (ownersResults.getTotalElements() == 1) {
-        return "redirect:/owners/" + owner.getId();
-    }
-    model.addAttribute("owners", ownersResults);
-    addPaginationModel(page, model, ownersResults);
-    return "owners/findOwners";
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+protected void log(String message) {
+    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+    String timestamp = sdf.format(new Date());
+    System.out.println(timestamp + " - " + message);
 }

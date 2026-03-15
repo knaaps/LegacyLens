@@ -1,0 +1,21 @@
+{
+  "row": {
+    "arm": "rag_only",
+    "arm_label": "RAG-Only (semantic context, no verification)",
+    "function": "VetController.showVetList",
+    "category": "Paginated View",
+    "verified": false,
+    "confidence": 0,
+    "fidelity": null,
+    "iterations": 1,
+    "verdict": "RAG_ONLY",
+    "hallucination_free": null,
+    "completeness_pct": null,
+    "bleu1": 0.1676300578034682,
+    "bleu2": 0.011627906976744186,
+    "rouge1": 0.2710280373831776,
+    "rouge2": 0.018867924528301886,
+    "rougeL": 0.17757009345794392
+  },
+  "explanation": "This function is a Spring MVC controller method that handles HTTP GET requests at the \"/vets.html\" endpoint. It takes two parameters - an integer \"page\", which defaults to 1 if not provided in the request, and a Model object for data binding.\n\nThe function starts by creating a new Vets object (which presumably is some kind of collection or container for vet information). Then it calls a method `findPaginated(page)` that likely returns a Page<Vet> object representing paginated results of veterinary staff. This page is added to the vets list in the Vets object.\n\nFinally, the function calls another method `addPaginationModel(page, paginated, model)` which presumably adds some additional information to the Model that will be used by a view for rendering. The returned value of this call (presumably a string representing the name of a view) is then returned from this function as well.\n\nThe complexity of 1 indicates that there are one decision points in the code, and the lines of code are 6 indicating that it contains six statements."
+}
