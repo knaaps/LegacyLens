@@ -22,6 +22,11 @@ ENV/
 .pytest_cache/
 .ruff_cache/
 .cache/
+.ablation_cache/
+
+# ── Debug & Scratch ──────────────────────────────────────────
+debug_*
+scratch/
 
 # ── Node / JS ────────────────────────────────────────────────
 node_modules/
