@@ -139,19 +139,23 @@ def step_1_parse() -> Tuple[List[FunctionMetadata], JavaParser]:
         title="[bold]Highest Complexity Methods[/bold]",
         box=box.ROUNDED,
         title_style="bold white",
-        header_style="bold",
-        padding=(0, 1),
+        header_style="bold magenta",
+        padding=(0, 2),
     )
     tbl.add_column("Class.Method", style="white", min_width=30)
     tbl.add_column("Lines", justify="right", style="cyan")
     tbl.add_column("CC", justify="right", style="yellow")
     tbl.add_column("Calls", justify="right", style="dim")
+    tbl.add_column("Risk Level", justify="center", style="bold")
     for fn in top:
+        risk = "🔴 High" if fn.complexity > 4 else "🟡 Medium"
+        color = "red" if fn.complexity > 4 else "yellow"
         tbl.add_row(
             fn.qualified_name,
             str(fn.line_count),
             str(fn.complexity),
             str(len(fn.calls)),
+            f"[{color}]{risk}[/{color}]",
         )
     console.print(tbl)
 
@@ -179,12 +183,23 @@ def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
 
     # Run multiple queries to show versatility
     for q in QUERIES:
-        console.print(f'  [bold]Query:[/bold]  [italic]"{q}"[/italic]')
+        query_panel = Panel(f"[bold italic]\"{q}\"[/bold italic]", border_style="blue", padding=(0,2))
+        console.print(query_panel)
+
+        rtable = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0,2))
+        rtable.add_column("Rank", style="dim")
+        rtable.add_column("Matched Function", style="bold white")
+        rtable.add_column("Cosine Distance", justify="right", style="cyan")
+        rtable.add_column("Relevance", style="green")
+
         results = embedder.search(q, top_k=3)
         for i, r in enumerate(results, 1):
             name = r["metadata"].get("qualified_name", "?")
             dist = r["distance"]
-            console.print(f"    {i}. [white]{name:<38}[/] dist=[cyan]{dist:.4f}[/]")
+            quality = "⭐⭐⭐" if dist < 0.02 else ("⭐⭐" if dist < 0.025 else "⭐")
+            rtable.add_row(str(i), name, f"{dist:.4f}", quality)
+        
+        console.print(rtable)
         console.print()
 
     _ok("Finds relevant code by meaning, not keywords")
@@ -222,15 +237,16 @@ def step_3_context(functions: List[FunctionMetadata]) -> Optional[SlicedContext]
 
     # Graph stats panel
     stats_text = (
-        f"  Nodes:  [bold cyan]{graph.size}[/bold cyan]  (functions)\n"
-        f"  Edges:  [bold cyan]{total_edges}[/bold cyan]  (call relationships)\n"
-        f"  Most connected:\n"
+        f"  [bold]Graph Size:[/bold]       [cyan]{graph.size}[/cyan] nodes\n"
+        f"  [bold]Edge Count:[/bold]       [cyan]{total_edges}[/cyan] call relationships\n"
+        f"  [bold]Architecture:[/bold]     [yellow]Spring MVC Monolith[/yellow]\n\n"
+        f"  [bold]Top Connected Hubs (Callees):[/bold]\n"
     )
     for fn in by_calls:
-        stats_text += f"    • [white]{fn.qualified_name}[/]  → {len(fn.calls)} calls\n"
+        stats_text += f"    • [white]{fn.qualified_name}[/]  → {len(fn.calls)} outgoing\n"
     console.print(
         Panel(
-            stats_text.strip(), title="[bold]Call Graph[/bold]", border_style="dim", padding=(0, 1)
+            stats_text.strip(), title="[bold magenta]Call Graph Topology[/bold magenta]", border_style="magenta", padding=(1, 2)
         )
     )
 
@@ -271,10 +287,10 @@ def step_4_verify(ctx: SlicedContext) -> str:
     provider = os.environ.get("LLM_PROVIDER", "local")
 
     info = Table.grid(padding=(0, 2))
-    info.add_row("[dim]Provider:[/dim]", f"[cyan]{provider}[/cyan]")
-    info.add_row("[dim]Max loops:[/dim]", f"[cyan]{MAX_ITER}[/cyan]")
-    info.add_row("[dim]Target:[/dim]", f"[white]{ctx.target.qualified_name}[/white]")
-
+    info.add_row("[dim]Target Method:[/dim]", f"[bold white]{ctx.target.qualified_name}[/bold white]")
+    info.add_row("[dim]LLM Provider:[/dim]", f"[cyan]{provider}[/cyan]")
+    info.add_row("[dim]Max Retries:[/dim]", f"[yellow]{MAX_ITER}[/yellow] iterations")
+    
     # Load SOP if requested
     sop: dict = {}
     sop_label = "default"
@@ -283,8 +299,8 @@ def step_4_verify(ctx: SlicedContext) -> str:
 
         sop = load_sop(_args.sop)
         sop_label = _args.sop
-    info.add_row("[dim]SOP variant:[/dim]", f"[cyan]{sop_label}[/cyan]")
-    console.print(info)
+    info.add_row("[dim]Active SOP:[/dim]", f"[magenta]{sop_label.title()}[/magenta]")
+    console.print(Panel(info, title="[bold]Agent Configuration[/bold]", border_style="blue", expand=False))
     console.print("\n  Running Writer → Critic → Regeneration...\n")
 
     code = ctx.target.code
@@ -358,24 +374,24 @@ def step_4_verify(ctx: SlicedContext) -> str:
 
     # ── Metrics table ──
     console.print()
-    mtbl = Table(box=box.SIMPLE, padding=(0, 2), show_header=False)
-    mtbl.add_column("Metric", style="dim", min_width=14)
-    mtbl.add_column("Value")
+    mtbl = Table(box=box.MINIMAL_DOUBLE_HEAD, padding=(0, 2), show_header=True, header_style="bold magenta")
+    mtbl.add_column("Verification Metric")
+    mtbl.add_column("Result Score")
 
-    v_str = "[bold green]PASS[/bold green]" if result.verified else "[bold red]FAIL[/bold red]"
-    mtbl.add_row("Verified", v_str)
-    mtbl.add_row("Confidence", f"[cyan]{result.confidence}%[/cyan]")
-    mtbl.add_row("Iterations", f"{result.iterations} / {MAX_ITER}")
+    v_str = "[bold green]✅ PASS[/bold green]" if result.verified else "[bold red]❌ FAIL[/bold red]"
+    mtbl.add_row("Final Status", v_str)
+    mtbl.add_row("Agent Confidence", f"[cyan]{result.confidence}%[/cyan]")
+    mtbl.add_row("Loops Required", f"[yellow]{result.iterations} / {MAX_ITER}[/yellow]")
 
     if result.critique:
-        fc = "[green]✓ yes[/green]" if result.critique.factual_passed else "[red]✗ no[/red]"
-        mtbl.add_row("Factual", fc)
-        mtbl.add_row("Completeness", f"[cyan]{result.critique.completeness_pct:.0f}%[/cyan]")
-        mtbl.add_row("Risks flagged", str(len(result.critique.flagged_risks)))
+        fc = "[green]✓ Yes[/green]" if result.critique.factual_passed else "[red]✗ No[/red]"
+        mtbl.add_row("Factual Accuracy", fc)
+        mtbl.add_row("Completeness Score", f"[cyan]{result.critique.completeness_pct:.0f}%[/cyan]")
+        mtbl.add_row("Risks Flagged", f"[red]{len(result.critique.flagged_risks)}[/red]" if result.critique.flagged_risks else "[green]0[/green]")
 
     if result.fidelity_score is not None:
         c = "green" if result.fidelity_score >= 0.7 else "yellow"
-        mtbl.add_row("Fidelity", f"[{c}]{result.fidelity_score:.0%}[/{c}]")
+        mtbl.add_row("Regen Fidelity", f"[{c}]{result.fidelity_score:.0%}[/{c}]")
 
     console.print(mtbl)
 
@@ -505,19 +521,18 @@ def main() -> None:
 
     # Welcome Banner
     console.print()
-    welcome_table = Table(box=box.DOUBLE_EDGE, show_header=False, expand=True)
-    welcome_table.add_column("info", justify="center")
-    welcome_table.add_row("[bold cyan]LegacyLens[/bold cyan]  —  Faculty Demo")
-    welcome_table.add_row("[dim]Intelligent Context Slicing + Multi-Agent Verification[/dim]")
-
-    config_str = (
-        f"[green]Target:[/green] Spring PetClinic   "
-        f"[green]LLM:[/green] {provider}   "
-        f"[green]Verification Loops:[/green] {MAX_ITER}   "
-        f"[green]SOP:[/green] {sop_label}"
+    banner = Panel(
+        f"[bold cyan]🚀 LegacyLens[/bold cyan] — [bold white]Final Faculty Live Demo[/bold white]\n"
+        f"[dim]Advanced Code Comprehension & RAG Verification Pipeline[/dim]\n\n"
+        f"[green]🎯 Target:[/green] [white]Spring PetClinic (Full Project)[/white]\n"
+        f"[green]🧠 Engine:[/green] [white]{provider.upper()}[/white]\n"
+        f"[green]🔄 Max Loops:[/green] [white]{MAX_ITER} (Writer → Critic → Regen)[/white]\n"
+        f"[green]⚙️  SOP:[/green] [white]{sop_label.title()}[/white]",
+        box=box.DOUBLE,
+        expand=False,
+        border_style="cyan"
     )
-    welcome_table.add_row(config_str)
-    console.print(welcome_table)
+    console.print(banner, justify="center")
     console.print()
 
     if not PETCLINIC.exists():
@@ -548,6 +563,22 @@ def main() -> None:
 
         # 5 — Comparative CodeBalance
         step_5_score(functions)
+
+        # 6 — Web Dashboard Reminder
+        _step(6, "Web Dashboard & 3D Visualization")
+        dash_panel = Panel(
+            "[bold white]The analytical pipeline run is now complete & persisted.[/bold white]\n\n"
+            "Launch the interactive web platform to explore:\n"
+            "  • [cyan]3D Codebase Explorer[/cyan] (Plotly Scatter Plot)\n"
+            "  • [cyan]Interactive Risk Heatmap[/cyan] (D3.js Treemap)\n"
+            "  • [cyan]Deep-Dive Function Matrix[/cyan] (DataTables)\n\n"
+            "[bold green]Run command in new terminal:[/bold green] [bold white]legacylens dashboard[/bold white]",
+            title="[bold magenta]Step 6: Launch User Interface[/bold magenta]",
+            border_style="magenta",
+            box=box.ROUNDED,
+            padding=(1, 2)
+        )
+        console.print(dash_panel)
 
         console.print()
         console.print(

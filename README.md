@@ -49,9 +49,9 @@ We tested LegacyLens on 13 complex functions from Spring PetClinic and Apache An
 
 | Configuration | Pass Rate ↑ | Hallucination Rate ↓ | AST Fidelity ↑ | ROUGE-1 ↑ |
 | :--- | :---: | :---: | :---: | :---: |
-| ❌ **Zero-Shot / RAG-Only** | 0% | 100% | 0% | ~0.200 |
-| ⚙️ **LegacyLens (No Rep.)** | 77% | 23% | **75%** | 0.148 |
-| 🏆 **LegacyLens + Prompt Repetition** | **85%** | **15%** | 69% | 0.139 |
+|  **Zero-Shot / RAG-Only** | 0% | 100% | 0% | ~0.200 |
+|  **LegacyLens (No Rep.)** | 77% | 23% | **75%** | 0.148 |
+|  **LegacyLens + Prompt Repetition** | **85%** | **15%** | 69% | 0.139 |
 
 *By strictly enforcing LLM constraints through the multi-agent loop, LegacyLens completely eliminates the hallucination problem inherent in Zero-Shot/RAG approaches, achieving an 85% pass rate for functional correctness at the slight cost of raw AST fidelity.*
 

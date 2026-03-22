@@ -1,218 +1,92 @@
-# Faculty Demo Guide
+# 🎓 LegacyLens: Final Faculty Demo Guide
 
-## Quick Start
-
-```bash
-# Activate venv, then run:
-python faculty_demo.py                     # Groq (default, fast)
-LLM_PROVIDER=local python faculty_demo.py  # Ollama (private)
-```
-
-The demo is **self-contained** — it parses, indexes, searches, verifies, and
-scores in a single run. No prior `legacylens index` step is required.
+Welcome to the **LegacyLens** showcase! This document serves as your definitive guide to demonstrating the platform's full capabilities to faculty, evaluators, or business stakeholders.
 
 ---
 
-## Pipeline Overview
+## 🌟 The Pitch
 
-| Step | Module | Scope | What It Shows |
-|------|--------|-------|---------------|
-| **1 — AST Parsing** | Tree-Sitter | All 4 packages | Per-package breakdown, top-complexity methods |
-| **2 — Semantic Search** | CodeBERT + ChromaDB | Full index | Two diverse queries across the whole codebase |
-| **3 — Call Graph** | In-memory graph | Project-wide | Node/edge stats, most-connected functions, context tree |
-| **4 — Multi-Agent** | Writer → Critic → Regen | `processFindForm` | Up to **5** revision loops with compositional checks |
-| **5 — CodeBalance** | 3-axis scoring | Two functions | Side-by-side Energy / Debt / Safety comparison |
-| **6 — Web Dashboard** | Flask + Chart.js + Plotly | Full codebase | Interactive business analytics and 3D risk exploration |
+**LegacyLens** solves the "Developer Comprehension Gap" in legacy software. When developers inherit undocumented, monolithic codebases, traditional search tools fail. We provide:
+1. **Intelligent Code Slicing (Call Graphs + AST)**
+2. **Semantic Meaning Extraction (CodeBERT Embeddings)**
+3. **Multi-Agent Hallucination Defense (Writer → Critic → Regen)**
+4. **Interactive 3D Visual Analytics (Flask/Plotly/D3)**
 
-
-### Step 1 — Cross-Package Parsing
-
-The demo parses the **entire** PetClinic source tree — all packages
-(`owner`, `vet`, `system`, `model`, root classes) — not just one controller.
-Output includes:
-
-- A **package tree** showing file and method counts per package
-- A **top-complexity table** ranking the most complex methods across the project
-
-### Step 4 — Verification Loop (Deep Dive)
-
-The orchestrator runs up to **5 iterations** (configurable via `MAX_ITER`):
-
-```
-Writer drafts explanation
-    ↓
-Compositional Critic checks:
-    • Factual — cross-refs identifiers vs AST
-    • Completeness — params / returns / side-effects
-    • Risk — SQL injection, unsafe eval, etc.
-    ↓
-Verdict:  PASS → accept   |  REVISE → loop   |  FAIL → stop
-    ↓
-Regeneration Validator — reconstructs code from explanation (AST fidelity)
-```
-
-### Step 5 — Comparative Scoring
-
-Two functions are scored side-by-side so the audience can compare code health:
-- `processFindForm` — search handler with branching logic
-- `processCreationForm` — form submission with validation
+By running this single script, you'll walk through a complete end-to-end pipeline on the industry-standard **Spring PetClinic** repository, demonstrating real-world scale and robustness.
 
 ---
 
-## Expected Output
+## 🚀 Quick Start
 
-```
-╭──────────────────────────────────────────────────────────────────────────╮
-│  LegacyLens  —  Faculty Demo                                            │
-│                                                                          │
-│  Target:  Spring PetClinic (full source)                                 │
-│  LLM:     groq                                                           │
-│  Loops:   5 max Writer→Critic iterations                                 │
-╰──────────────────────────────────────────────────────────────────────────╯
-
-─────────────────────────── STEP 1 ────────────────────────────
-  AST Parsing  (Tree-Sitter)
-
-  Scanning PetClinic source → 30 Java files
-
-  petclinic
-  ├── model    (3 files, 8 methods)
-  ├── owner    (9 files, 45 methods)
-  ├── system   (4 files, 6 methods)
-  ├── vet      (6 files, 12 methods)
-  └── (root)   (3 files, 2 methods)
-
-  Total: 73 methods extracted
-
-  ╭── Highest Complexity Methods ──╮
-  │ Class.Method           Lines CC │
-  │ OwnerController.proc…    18  4 │
-  │ PetController.proc…      14  3 │
-  │ …                              │
-  ╰────────────────────────────────╯
-  ✓ Parsed 30 files across 5 packages
-
-─────────────────────────── STEP 2 ────────────────────────────
-  Semantic Search  (CodeBERT + ChromaDB)
-
-  Indexed 73 embeddings
-
-  Query:  "find owner by last name"
-    1. OwnerController.initFindForm        dist=0.0186
-    2. OwnerController.initCreationForm    dist=0.0211
-
-  Query:  "add a new pet to the clinic"
-    1. PetController.initCreationForm      dist=0.0198
-    2. PetController.processCreationForm   dist=0.0223
-
-  ✓ Finds relevant code by meaning, not keywords
-  ✓ Works across all packages
-
-─────────────────────────── STEP 3 ────────────────────────────
-  Hybrid Context  (Call Graph + RAG)
-
-  ╭── Call Graph ──────────────────╮
-  │ Nodes:  73  (functions)        │
-  │ Edges:  120 (call rels)        │
-  │ Most connected:                │
-  │   • OwnerController.proc… → 5 │
-  ╰────────────────────────────────╯
-
-  Context slice for processFindForm:
-  OwnerController.processFindForm
-  ├── ↑ callers
-  └── ↓ callees
-      ├── findPaginatedForOwnersLastName
-      └── addPaginationModel
-
-  ✓ Deterministic 1-hop context from project-wide call graph
-
-─────────────────────────── STEP 4 ────────────────────────────
-  Multi-Agent Verification  (Writer → Critic → Regen)
-
-  Provider:   groq
-  Max loops:  5
-  Target:     OwnerController.processFindForm
-
-  ╭── Generated Explanation ───────╮
-  │ This Spring MVC controller…    │
-  ╰────────────────────────────────╯
-
-  Verified       PASS
-  Confidence     95%
-  Iterations     1 / 5
-  Factual        ✓ yes
-  Completeness   100%
-  Fidelity       83%
-  ✓ Explanation verified by Compositional Critic + Regeneration
-
-─────────────────────────── STEP 5 ────────────────────────────
-  CodeBalance  (Energy / Debt / Safety)
-
-  ╭─ processFindForm ──────────╮╭─ processCreationForm ────────╮
-  │ ⚡ Energy   ████░░░░░░ 4/10 ││ ⚡ Energy   ███░░░░░░░ 3/10  │
-  │ 🔧 Debt     ░░░░░░░░░░ 0/10 ││ 🔧 Debt     █░░░░░░░░░ 1/10  │
-  │ 🛡️  Safety  ░░░░░░░░░░ 0/10 ││ 🛡️  Safety  ░░░░░░░░░░ 0/10  │
-  │ Grade: A  (total 4/30)     ││ Grade: A  (total 4/30)       │
-  ╰────────────────────────────╯╰──────────────────────────────╯
-  ✓ Comparative view reveals relative code health
-
-─────────────────────────── STEP 6 ────────────────────────────
-  Web Dashboard (v0.2.0-web-preview)
-
-  Launch: `legacylens dashboard`
-
-  • **3D Hero Explorer:** Interactive Plotly/d3.js scatter plot with Safety safety color-coding and click-to-explain interactions.
-  • **Risk Heatmap:** Module-level treemaps sized by function count and colored by average risk with instant drilldown.
-  • **Function Matrix:** Sortable, color-coded table of all indexed methods for deep exploration.
-  • **Omni-Search:** Persistent navigation search with autocomplete and split-view explanation results.
-
-  ✓ Industry-grade visual analytics for legacy comprehension.
-
-## CLI Expert Flags
-
-Leverage the bridge between terminal and web for power workflows:
+Ensure your virtual environment is activated and the `data/spring-petclinic` repository is cloned.
 
 ```bash
-# Direct navigation to a function in the dashboard
-legacylens explain "processFindForm" --web
+# To run via Groq Cloud API (Recommended for live demos - extremely fast)
+python scripts/faculty_demo.py
 
-# Structured analysis for CI/CD or automation
-legacylens explain "processFindForm" --format json
-legacylens query "all controller methods" --format markdown
+# To run via local Ollama models (For privacy & offline use)
+LLM_PROVIDER=local python scripts/faculty_demo.py
 ```
 
-╭──────────────────────────────────────────────────────────────────────────╮
-│  ✅  All capabilities demonstrated successfully.                         │
-╰──────────────────────────────────────────────────────────────────────────╯
-```
+The demo orchestrates every step dynamically in memory. **No prior indexing steps are required.**
 
 ---
 
-## Configuration
+## 🎬 Narrative Flow: What to Say & Show
 
-### Groq (Cloud — Fast)
+Here is the exact step-by-step narrative to accompany the CLI execution.
 
+### Step 1: Structural AST Parsing
+* **The Action:** The script points an optimized Tree-Sitter parser at the entire PetClinic directory (30+ files across complex Spring MVC patterns).
+* **The Talking Point:** *"Notice how we instantly map the application's DNA. We're not just reading text; we're building a structural AST namespace. We instantly extract cyclical complexity (CC) and call-edge relationships to find the riskiest, most complex methods across the entire monolith."*
+
+### Step 2: Semantic AI Search
+* **The Action:** The pipeline generates localized CodeBERT vector embeddings natively without cloud round-trips. It then executes human-language queries like *"find owner by last name"*.
+* **The Talking Point:** *"Traditional 'grep' fails when variable names change. Here, we're using a dense vector space to find code by its **meaning and intent**. Notice how 'add a new pet' perfectly maps to the `processCreationForm` logic without direct keyword matches."*
+
+### Step 3: Call Graph & RAG Slicing
+* **The Action:** The system builds a deterministic, memory-resident contextual graph, mapping every single caller/callee relationship.
+* **The Talking Point:** *"LLMs lose their minds when given too much code. We use graph traversal to build a 1-hop 'context slice'. We feed the AI the target function **plus exactly who calls it and who it calls**—nothing more, nothing less. This eliminates noise."*
+
+### Step 4: Multi-Agent Critic Loop (The Crown Jewel)
+* **The Action:** We dispatch our target function to the Writer Agent. It generates an explanation, which is instantly challenged by the Compositional Critic Agent.
+* **The Talking Point:** *"This is our core innovation: **Multi-Agent Verification with Regeneration**. The Critic cross-references the Writer's explanation directly against the AST. Are all parameters mentioned? Are side effects listed? Did the AI hallucinate a database call? If the Critic rejects it, we loop up to 5 times. Finally, we score output using **Fidelity Regeneration**, asking an AI to write back code based solely on the explanation to prove it works."*
+
+### Step 5: CodeBalance Scoring
+* **The Action:** Two functions are scored side-by-side on Energy, Debt, and Safety risk axes.
+* **The Talking Point:** *"Cyclomatic Complexity isn't enough anymore. We map structural health into an intuitive 3-axis KPI matrix. This helps management triage where to dedicate refactoring resources."*
+
+### Step 6: 3D Visual Dashboard & Analytics
+* **The Action:** The console instructs you to launch the visual interface.
+* **The Talking Point:** *"CLI output is great for engineers, but management needs macro-visibility. Let's spin up the dashboard."*
+
+➡️ **Action:** Open a new terminal and run:
 ```bash
-echo 'groq=gsk_your_key_here' > apikey.env
-LLM_PROVIDER=groq python faculty_demo.py
+legacylens dashboard
 ```
-
-### Ollama (Local — Private)
-
-```bash
-ollama pull deepseek-coder:6.7b
-ollama pull qwen2.5-coder:7b
-python faculty_demo.py  # or LLM_PROVIDER=local
-```
+Showcase the **3D Risk Scatter Plot** and the **Interactive Risk Treemap Heatmap**. Emphasize that all node data was generated seamlessly by the pipeline you just ran!
 
 ---
 
-## Troubleshooting
+## ⚙️ Advanced Tweaks & Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| PetClinic not found | `cd data && git clone https://github.com/spring-projects/spring-petclinic` |
-| Ollama model missing | `ollama serve & ollama pull deepseek-coder:6.7b` |
-| Low fidelity scores | Normal for small functions (<10 lines); ≥70% is strong |
-| Critic always FAIL | Check Groq API key in `apikey.env`; ensure model is reachable |
+### Simulating Critic Failures
+Want to prove the Critic works during the demo? Run with a "nervous" or "hallucinating" SOP variant:
+```bash
+python scripts/faculty_demo.py --sop cautious
+```
+*This loads a specialized prompt that makes the AI more likely to trigger a retry loop.*
+
+### Changing Target Functions
+Open `scripts/faculty_demo.py` and modify lines 47-48:
+```python
+TARGET_FN = "processFindForm"
+TARGET_FN_2 = "processCreationForm"
+```
+You can switch these to any method in `data/spring-petclinic` to prove the system isn't hardcoded.
+
+### Network / API Issues
+If Groq is rate-limiting during the presentation:
+1. Hit `Ctrl+C`.
+2. Ensure you ran `ollama pull qwen2.5-coder:7b`.
+3. Switch instantly: `LLM_PROVIDER=local python scripts/faculty_demo.py`.
