@@ -261,8 +261,14 @@ def create_app():
     # ── top N functions by metric ─────────────────────────────────────────────
     @app.route("/api/top")
     def api_top():
+        _VALID_METRICS = {"energy", "debt", "safety"}
         metric = request.args.get("metric", "debt")
-        limit = min(int(request.args.get("limit", 15)), 50)
+        if metric not in _VALID_METRICS:
+            return jsonify({"error": f"Invalid metric '{metric}'. Choose from: {sorted(_VALID_METRICS)}"}), 400
+        try:
+            limit = min(int(request.args.get("limit", 15)), 50)
+        except ValueError:
+            limit = 15
         reverse = request.args.get("order", "desc") == "desc"
         fns = _load_functions()
         valid = [f for f in fns if f.get(metric) is not None]
@@ -335,7 +341,16 @@ def create_app():
         file_path = request.args.get("path")
         if not file_path:
             abort(400)
-        p = Path(file_path)
+        p = Path(file_path).resolve()
+        # Security: only serve files that belong to the indexed repository.
+        # This prevents path traversal attacks (e.g. ?path=/etc/passwd).
+        repo_root = _get_repo_root()
+        if repo_root is None:
+            abort(403)  # No repo indexed — nothing safe to serve
+        try:
+            p.relative_to(repo_root.resolve())
+        except ValueError:
+            abort(403)  # Path escapes the repo root
         if not p.exists():
             abort(404)
         ext = p.suffix.lstrip(".")

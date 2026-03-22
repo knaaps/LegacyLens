@@ -10,8 +10,13 @@ Set LLM_PROVIDER=groq and ensure apikey.env exists with your Groq key.
 Default is "local" (Ollama).
 """
 
+import logging
 import os
+import re
+import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Provider backends
@@ -33,7 +38,6 @@ def _call_ollama(model: str, prompt: str, temperature: float) -> str:
 def _call_groq(model: str, prompt: str, temperature: float) -> str:
     """Call the Groq cloud API."""
     from groq import Groq
-    import time
 
     # Load API key from apikey.env if not already in environment
     api_key = os.environ.get("GROQ_API_KEY")
@@ -53,19 +57,17 @@ def _call_groq(model: str, prompt: str, temperature: float) -> str:
             except Exception as e:
                 if "429" in str(e):
                     wait = (2 ** attempt) + 1
-                    print(f"Rate limit - retry in {wait}s")
+                    logger.warning("Groq rate limit hit — retrying in %ds (attempt %d/%d)", wait, attempt + 1, max_retries)
                     time.sleep(wait)
                 else:
                     raise
-        raise TimeoutError
+        raise TimeoutError("Groq API did not respond after %d retries" % max_retries)
 
     response = groq_call_with_backoff(prompt)
     text = response.choices[0].message.content.strip()
 
     # Strip Qwen3's chain-of-thought <think>...</think> tags.
     # These contain internal reasoning that should not appear in output.
-    import re
-
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
     return text
@@ -145,10 +147,6 @@ def llm_generate(
     provider = os.environ.get("LLM_PROVIDER", "local").lower()
     resolved_model = _resolve_model(model, provider)
 
-    print("\n" + "="*80)
-    print("DEBUG: FIRST 250 CHARS OF PROMPT SENT TO LLM:")
-    print(prompt[:250])
-    print("="*80 + "\n")
 
     if provider == "groq":
         return _call_groq(resolved_model, prompt, temperature)
