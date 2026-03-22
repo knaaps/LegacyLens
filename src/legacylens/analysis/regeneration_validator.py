@@ -253,12 +253,10 @@ Preserve signature, annotations, parameters, and body 100%:
     os.environ["LLM_PROVIDER"] = "local"
     try:
         raw = llm_generate(
-            prompt=prompt, 
-            model="deepseek-coder:6.7b", 
-            temperature=0.2
+            prompt=prompt,
+            model="deepseek-coder:6.7b",
+            temperature=0.2,
         )
-        with open("debug_raw.txt", "w") as f:
-            f.write(raw)
     finally:
         if original_provider is not None:
             os.environ["LLM_PROVIDER"] = original_provider
@@ -266,9 +264,8 @@ Preserve signature, annotations, parameters, and body 100%:
             os.environ.pop("LLM_PROVIDER", None)
 
     code = _extract_code_from_response(raw, language)
-    with open("debug_ext.txt", "w") as f:
-        f.write(code)
     return code.strip()
+
 def _strip_class_wrapper(code: str) -> str:
     import re
     code = code.strip()
@@ -406,9 +403,6 @@ def validate_regeneration(
         repetition_variant=repetition_variant,
     )
 
-    # Step 2: Compare ASTs
-    with open("debug_regen.java", "w") as f:
-        f.write(regenerated)
     fidelity = compute_ast_similarity(original_code, regenerated, language)
 
     # Step 3: Report

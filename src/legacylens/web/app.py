@@ -81,6 +81,7 @@ def create_app():
     # ── routes ───────────────────────────────────────────────────────────────
 
     @app.route("/")
+    @app.route("/dashboard")
     def index():
         return render_template("index.html")
 
@@ -233,6 +234,43 @@ def create_app():
             datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M") if mtime else "unknown"
         )
 
+        summary_markdown = ""
+        try:
+            from legacylens.agents.explanation_store import ExplanationStore
+            from legacylens.agents.provider import llm_generate
+            
+            store = ExplanationStore()
+            record = store.get("executive_summary")
+            if record:
+                summary_markdown = record.get("finalized_markdown", "")
+            else:
+                if fns:
+                    most_complex = max(
+                        fns, 
+                        key=lambda f: (f.get("energy") or 0) + (f.get("debt") or 0) + (f.get("safety") or 0)
+                    )
+                    c_name = most_complex.get("name", "Unknown")
+                    c_file = most_complex.get("file", "Unknown")
+                    c_energy = most_complex.get("energy", 0)
+                    c_debt = most_complex.get("debt", 0)
+                    c_safety = most_complex.get("safety", 0)
+                    
+                    prompt = f"""You are an expert software architect. Provide a brief executive summary (2-3 paragraphs) of the codebase health based on this data:
+Total functions analyzed: {len(fns)}
+High risk functions: {high_risk}
+The most complex function is `{c_name}` in `{c_file}` (energy={c_energy}, debt={c_debt}, safety={c_safety}).
+Focus on the overall risk, highlighting the most complex function as an example of technical debt, and suggest what actions should be taken. Use Markdown formatting. Keep it concise, do not output any <think> block or other meta text, just the summary."""
+                    summary_markdown = llm_generate(prompt, model="deepseek-coder:6.7b", temperature=0.3)
+                    store.upsert(
+                        fn_qualified_name="executive_summary",
+                        text=summary_markdown,
+                        markdown=summary_markdown,
+                        confidence=100.0,
+                        fidelity=1.0
+                    )
+        except Exception as e:
+            print("Error generating executive summary:", e)
+
         return jsonify(
             {
                 "total_functions": len(fns),
@@ -243,6 +281,7 @@ def create_app():
                 "high_risk_count": high_risk,
                 "risky_files": risky_files,
                 "module_summary": module_summary,
+                "summary": summary_markdown,
             }
         )
 

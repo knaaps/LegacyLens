@@ -151,10 +151,10 @@ class ExplanationStore:
 
         logger.info(
             "ExplanationStore: stored high-confidence explanation for '%s' "
-            "(confidence=%.0f%%, fidelity=%.0%%, version=%s)",
+            "(confidence=%.0f%%, fidelity=%.0f%%, version=%s)",
             fn_qualified_name,
             confidence,
-            fidelity,
+            fidelity * 100,
             codebase_version or "n/a",
         )
         print(

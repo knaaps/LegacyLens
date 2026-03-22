@@ -1,352 +1,248 @@
 {% extends "base.html" %}
 
-{% block title %}LegacyLens — Search{% endblock %}
+{% block title %}Semantic Search - LegacyLens{% endblock %}
+{% block nav_search %}active{% endblock %}
 
 {% block extra_head %}
 <style>
-    .section-title {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        margin-bottom: 14px;
+    .search-hero {
+        text-align: center;
+        padding: 40px 20px;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        margin-bottom: 30px;
     }
 
-    .search-page-bar {
+    .hero-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        color: transparent;
+    }
+
+    .search-input-container {
+        display: flex;
+        max-width: 600px;
+        margin: 24px auto 0;
+        position: relative;
+    }
+
+    .main-search-input {
+        flex: 1;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid var(--border-light);
+        border-right: none;
+        border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+        color: #fff;
+        padding: 16px 20px;
+        font-size: 16px;
+        font-family: 'Inter', sans-serif;
+        outline: none;
+        transition: all 0.2s;
+    }
+    .main-search-input:focus {
+        background: rgba(0,0,0,0.6);
+        border-color: var(--accent-primary);
+    }
+    .main-search-btn {
+        background: var(--accent-gradient);
+        border: none;
+        border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+        color: #fff;
+        padding: 0 24px;
+        font-weight: 600;
+        cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
+        gap: 8px;
+        transition: opacity 0.2s;
     }
-
-    .search-page-bar input {
-        flex: 1;
-        padding: 10px 16px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: var(--text);
-        font-size: 14px;
-        font-family: inherit;
+    .main-search-btn:hover { opacity: 0.9; }
+    
+    .k-input {
+        position: absolute;
+        right: 120px; /* Space for the button */
+        top: 50%;
+        transform: translateY(-50%);
+        width: 60px;
+        background: transparent;
+        border: none;
+        border-left: 1px solid var(--border-light);
+        color: var(--text-secondary);
+        padding: 8px;
+        text-align: center;
+        font-family: 'JetBrains Mono', monospace;
         outline: none;
     }
+    .k-input:focus { color: #fff; }
 
-    .search-page-bar input:focus {
-        border-color: var(--accent);
-    }
-
-    .search-page-bar button {
-        padding: 10px 20px;
-        background: var(--accent);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 13px;
-        cursor: pointer;
-        transition: opacity .15s;
-    }
-
-    .search-page-bar button:hover {
-        opacity: .85;
-    }
-
-    /* ── Split view ──────────────────────────────────── */
-    .split-view {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        min-height: 500px;
-    }
-
-    @media (max-width: 900px) {
-        .split-view {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .split-left,
-    .split-right {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 18px 20px;
-        overflow-y: auto;
-        max-height: 70vh;
-    }
-
-    .result-item {
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        cursor: pointer;
-        transition: background .1s;
-    }
-
-    .result-item:last-child {
-        border-bottom: none;
-    }
-
-    .result-item:hover,
-    .result-item.active {
-        background: var(--surface2);
-    }
-
-    .result-item .ri-name {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-        color: var(--accent);
-        margin-bottom: 2px;
-    }
-
-    .result-item .ri-file {
-        font-size: 11px;
-        color: var(--text-dim);
-    }
-
-    .result-item .ri-scores {
+    .results-container {
         display: flex;
-        gap: 8px;
-        margin-top: 4px;
+        flex-direction: column;
+        gap: 16px;
     }
 
-    .ri-pill {
-        font-size: 10px;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 20px;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
+    .result-card {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .result-card:hover {
+        border-color: rgba(99,102,241,0.4);
+        transform: translateX(4px);
     }
 
-    .no-results {
-        color: var(--text-dim);
-        text-align: center;
-        padding: 40px;
-        font-size: 13px;
-    }
-
-    /* ── explanation pane ─────────────────────────────── */
-    .explain-pane-title {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--accent);
-        margin-bottom: 4px;
-    }
-
-    .explain-pane-file {
-        font-size: 11px;
-        color: var(--text-dim);
-        margin-bottom: 14px;
-    }
-
-    .explain-scores {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 16px;
-    }
-
-    .explain-score-card {
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        padding: 10px;
-        text-align: center;
-    }
-
-    .explain-score-card .esc-label {
-        font-size: 10px;
-        color: var(--text-dim);
-        margin-bottom: 2px;
-    }
-
-    .explain-score-card .esc-value {
-        font-size: 20px;
-        font-weight: 700;
-    }
-
-    .explain-section {
+    .rc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
         margin-bottom: 12px;
     }
 
-    .explain-section-title {
-        font-size: 11px;
+    .rc-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
         font-weight: 700;
-        letter-spacing: .5px;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        margin-bottom: 6px;
-        cursor: pointer;
+        color: var(--accent-primary);
+        margin-bottom: 4px;
+    }
+    .rc-file {
+        font-size: 12px;
+        color: var(--text-tertiary);
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
     }
 
-    .explain-section-title .chevron {
-        transition: transform .15s;
-        font-size: 10px;
+    .rc-score {
+        background: rgba(16,185,129,0.1);
+        color: var(--success);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        border: 1px solid rgba(16,185,129,0.2);
     }
 
-    .explain-section-title .chevron.collapsed {
-        transform: rotate(-90deg);
-    }
-
-    .explain-section-body {
-        font-size: 13px;
+    .rc-explanation {
+        color: var(--text-secondary);
+        font-size: 14px;
         line-height: 1.6;
-        color: var(--text);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
-    .explain-section-body.collapsed {
-        display: none;
-    }
+    .search-loading { display: none; text-align: center; padding: 40px; color: var(--text-tertiary); }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 {% endblock %}
 
 {% block content %}
-<section>
-    <div class="section-title">Search Results</div>
-    <div class="search-page-bar">
-        <input type="text" id="search-input" placeholder="Search functions, files…" autocomplete="off" />
-        <button id="search-btn">Search</button>
+<div class="search-hero">
+    <div class="hero-title">Semantic Code Search</div>
+    <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto; line-height: 1.5;">
+        Search through your codebase using natural language. LegacyLens uses embeddings to find functions based on their <strong>meaning and purpose</strong>, not just exact keyword matches.
+    </p>
+    
+    <div class="search-input-container">
+        <input type="text" id="queryInput" class="main-search-input" placeholder="e.g. 'How is user authentication handled?'" onkeydown="if(event.key === 'Enter') doSearch()">
+        <input type="number" id="kInput" class="k-input" value="5" min="1" max="20" title="Number of results">
+        <button onclick="doSearch()" class="main-search-btn" id="searchBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            Search
+        </button>
     </div>
+</div>
 
-    <div class="split-view">
-        <div class="split-left" id="result-list">
-            <div class="no-results">Enter a search query above</div>
-        </div>
-        <div class="split-right" id="explain-pane">
-            <div class="no-results">Select a result to view details</div>
-        </div>
-    </div>
-</section>
-{% endblock %}
+<div id="loadingIndicator" class="search-loading">
+    <div class="spinner" style="margin-bottom: 16px;"></div>
+    <div>Searching vector space...</div>
+</div>
 
-{% block extra_scripts %}
+<div id="results" class="results-container">
+    <!-- Results populated here -->
+</div>
+
 <script>
-    const { api: _api, $: _$, pillColor: _pillColor, scoreColor: _scoreColor, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
-
-    let allFuncs = [];
-    let currentResults = [];
-
-    function runSearch(query) {
-        if (!query || query.length < 1) { currentResults = []; renderResults(); return; }
-        const q = query.toLowerCase();
-        currentResults = allFuncs.filter(f =>
-            (f.name || '').toLowerCase().includes(q) ||
-            (f.file || '').toLowerCase().includes(q) ||
-            (f.explanation || '').toLowerCase().includes(q) ||
-            (f.verified_explanation || '').toLowerCase().includes(q)
-        );
-        renderResults();
-    }
-
-    function renderResults() {
-        const list = _$('result-list');
-        if (!currentResults.length) {
-            list.innerHTML = '<div class="no-results">No results found</div>';
-            return;
-        }
-        list.innerHTML = currentResults.map((f, i) => {
-            const fname = (f.name || '').split('.').pop();
-            const ffile = (f.file || '').split('/').slice(-2).join('/');
-            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0;
-            return `<div class="result-item" data-idx="${i}">
-                <div class="ri-name">${fname}</div>
-                <div class="ri-file">…/${ffile}</div>
-                <div class="ri-scores">
-                    <span class="ri-pill ${_pillColor(e)}">${e}</span>
-                    <span class="ri-pill ${_pillColor(d)}">${d}</span>
-                    <span class="ri-pill ${_pillColor(s)}">${s}</span>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    function showExplanation(func) {
-        const pane = _$('explain-pane');
-        const e = func.energy ?? 0, d = func.debt ?? 0, s = func.safety ?? 0;
-        const explanation = func.explanation || func.verified_explanation || '';
-
-        const sections = [
-            { title: 'Purpose', body: _extractSection(explanation, 'Purpose') || 'N/A' },
-            { title: 'Parameters', body: _extractSection(explanation, 'Parameters') || 'N/A' },
-            { title: 'Returns', body: _extractSection(explanation, 'Returns') || 'N/A' },
-            { title: 'Side Effects', body: _extractSection(explanation, 'Side Effects') || 'N/A' },
-            { title: 'Risks', body: _extractSection(explanation, 'Risks') || 'N/A' },
-            { title: 'CodeBalance', body: `Energy: ${e}/10 · Debt: ${d}/10 · Safety: ${s}/10` },
-        ];
-
-        pane.innerHTML = `
-            <div class="explain-pane-title">${func.name}</div>
-            <div class="explain-pane-file">${func.file || ''}</div>
-            <div class="explain-scores">
-                <div class="explain-score-card"><div class="esc-label">Energy</div>
-                    <div class="esc-value" style="color:${_scoreColor(e)}">${e}/10</div></div>
-                <div class="explain-score-card"><div class="esc-label">Debt</div>
-                    <div class="esc-value" style="color:${_scoreColor(d)}">${d}/10</div></div>
-                <div class="explain-score-card"><div class="esc-label">Safety</div>
-                    <div class="esc-value" style="color:${_scoreColor(s)}">${s}/10</div></div>
-            </div>
-            ${sections.map(sec => `
-                <div class="explain-section">
-                    <div class="explain-section-title" onclick="this.querySelector('.chevron').classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')">
-                        <span class="chevron">▼</span> ${sec.title}
-                    </div>
-                    <div class="explain-section-body">${_escapeHtml(sec.body)}</div>
-                </div>`).join('')}`;
-    }
-
-    function _extractSection(text, heading) {
-        const re = new RegExp(`(?:^|\\n)\\*?\\*?${heading}[:\\*]*\\s*\\n?([\\s\\S]*?)(?=\\n\\*?\\*?[A-Z][a-z]+[:\\*]|$)`, 'i');
-        const m = text.match(re);
-        return m ? m[1].trim() : '';
-    }
-
-    function _escapeHtml(str) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-    }
-
-    // Event handlers
-    _$('search-btn').addEventListener('click', () => runSearch(_$('search-input').value));
-    _$('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(e.target.value); });
-
-    _$('result-list').addEventListener('click', e => {
-        const item = e.target.closest('.result-item');
-        if (!item) return;
-        document.querySelectorAll('.result-item').forEach(r => r.classList.remove('active'));
-        item.classList.add('active');
-        const idx = parseInt(item.dataset.idx);
-        if (currentResults[idx]) showExplanation(currentResults[idx]);
+    document.addEventListener('DOMContentLoaded', () => {
+        window.LegacyLens.$('app-root').style.display = 'block';
+        window.LegacyLens.$('loading').style.display = 'none';
+        document.getElementById('queryInput').focus();
     });
 
-    // Init with query param
-    async function init() {
+    async function doSearch() {
+        const q = document.getElementById('queryInput').value.trim();
+        const k = document.getElementById('kInput').value || 5;
+        
+        if (!q) return;
+
+        const resultsDiv = document.getElementById('results');
+        const loadingDiv = document.getElementById('loadingIndicator');
+        const searchBtn = document.getElementById('searchBtn');
+
+        resultsDiv.innerHTML = '';
+        loadingDiv.style.display = 'block';
+        searchBtn.disabled = true;
+        searchBtn.style.opacity = '0.5';
+
         try {
-            await _loadFns();
-            allFuncs = await _api('/api/functions');
-            const urlQ = new URLSearchParams(window.location.search).get('q');
-            if (urlQ) {
-                _$('search-input').value = urlQ;
-                runSearch(urlQ);
+            const data = await window.LegacyLens.api(\`/api/search?q=\${encodeURIComponent(q)}&k=\${k}\`);
+            
+            if (!data.results || data.results.length === 0) {
+                resultsDiv.innerHTML = \`
+                    <div style="text-align:center; padding: 40px; color:var(--text-tertiary); background:var(--bg-glass); border-radius:var(--radius-lg); border:1px dashed var(--border-light);">
+                        No semantic matches found.
+                    </div>
+                \`;
+                return;
             }
-            _$('loading').style.display = 'none';
-            _$('app-root').style.display = 'flex';
-            _$('app-root').style.flexDirection = 'column';
-            await _initNav();
+
+            resultsDiv.innerHTML = data.results.map((r, i) => \`
+                <div class="result-card" onclick="window.LegacyLens.openExplainModal('\${r.name}')" style="animation: slideIn \${0.2 + (i*0.05)}s ease forwards; opacity: 0; transform: translateY(10px);">
+                    <div class="rc-header">
+                        <div>
+                            <div class="rc-name">\${r.name}</div>
+                            <div class="rc-file">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                \${r.file || 'Unknown file'}
+                            </div>
+                        </div>
+                        <div class="rc-score" title="Cosine Similarity Score">
+                            \${(r.score * 100).toFixed(1)}% Match
+                        </div>
+                    </div>
+                    <div class="rc-explanation">
+                        \${r.explanation.substring(0, 200)}...
+                    </div>
+                </div>
+            \`).join('');
+
         } catch (err) {
-            _$('loading').style.display = 'none';
-            _$('app-root').style.display = 'flex';
-            _$('app-root').style.flexDirection = 'column';
-            const banner = _$('error-banner');
-            banner.style.display = 'block';
-            banner.textContent = '⚠ ' + err.message;
+            resultsDiv.innerHTML = \`
+                <div style="padding: 20px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; border-radius: var(--radius-md);">
+                    <strong>Search Error:</strong> \${err.message}
+                </div>
+            \`;
+        } finally {
+            loadingDiv.style.display = 'none';
+            searchBtn.disabled = false;
+            searchBtn.style.opacity = '1';
         }
     }
-
-    init();
 </script>
+<style>
+    @keyframes slideIn {
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 {% endblock %}

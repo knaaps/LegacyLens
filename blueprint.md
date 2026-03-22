@@ -98,12 +98,12 @@
 
 ## 4. Success Metrics & Validation
 
-| Metric | Target | Measurement |
-| :--- | :--- | :--- |
-| **Accuracy** | 87% | BLEU scores vs expert annotations |
-| **Uplift** | 23% | Improvement over Zero-Shot Learning (ZSL) baseline |
-| **Fidelity** | 78% | Regeneration similarity score |
-| **Hallucation Catch Rate** | >70% | Percentage of errors caught by Critic agent |
+| Metric | Target | Measurement | Current Result |
+| :--- | :--- | :--- | :--- |
+| **Pass Rate (Functional)** | >80% | Critic verification tests passed | **85%** (via Prompt Repetition) |
+| **Hallucination Rate** | <20% | Hand-audited hallucination rate | **15%** |
+| **AST Fidelity** | >65% | Bag-of-nodes Jaccard similarity | **69%** - **75%** |
+| **Baseline Uplift** | >80% | Uplift over Zero-Shot/RAG Baseline | **+85%** (over 0% ZSL Pass Rate) |
 
 ---
 

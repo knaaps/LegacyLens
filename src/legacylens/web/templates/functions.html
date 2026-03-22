@@ -1,347 +1,279 @@
 {% extends "base.html" %}
 
-{% block title %}LegacyLens — All Functions{% endblock %}
+{% block title %}Function Catalog - LegacyLens{% endblock %}
 {% block nav_functions %}active{% endblock %}
 
 {% block extra_head %}
 <style>
-    .section-title {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        margin-bottom: 14px;
-    }
-
-    /* ── filter bar ──────────────────────────────────── */
-    .filter-bar {
+    .controls-bar {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 18px;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: 16px 24px;
+        margin-bottom: 24px;
+        backdrop-filter: blur(10px);
     }
 
-    .filter-bar label {
-        font-size: 11px;
-        color: var(--text-dim);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: .5px;
-    }
-
-    .filter-bar input[type="number"],
-    .filter-bar select {
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        color: var(--text);
-        padding: 5px 10px;
-        font-size: 12px;
+    .search-input {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border-light);
+        color: #fff;
+        padding: 10px 16px 10px 40px;
+        border-radius: var(--radius-md);
         font-family: inherit;
+        font-size: 14px;
+        width: 300px;
+        transition: all 0.2s;
         outline: none;
-        width: 70px;
     }
-
-    .filter-bar input[type="number"]:focus,
-    .filter-bar select:focus {
-        border-color: var(--accent);
+    .search-input:focus {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+    }
+    .search-wrapper { position: relative; }
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-tertiary);
+        pointer-events: none;
     }
 
     .filter-group {
         display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .select-input {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border-light);
+        color: #fff;
+        padding: 10px 32px 10px 16px;
+        border-radius: var(--radius-md);
+        font-family: inherit;
+        font-size: 14px;
+        appearance: none;
+        cursor: pointer;
+        outline: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+    }
+    .select-input:focus { border-color: var(--accent-primary); }
+
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+    }
+
+    .func-card {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .func-card:hover {
+        border-color: rgba(99, 102, 241, 0.4);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .func-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    
+    .func-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+        word-break: break-all;
+    }
+
+    .func-file {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        font-family: 'Inter', sans-serif;
+        margin-top: 4px;
+        display: flex;
         align-items: center;
         gap: 6px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 6px 12px;
     }
 
-    .filter-bar .reset-btn {
-        background: none;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        color: var(--text-dim);
-        padding: 5px 12px;
+    .metric-pills { display: flex; gap: 8px; margin-top: auto; padding-top: 16px; }
+    
+    .metric-pill {
+        padding: 4px 10px;
+        border-radius: 20px;
         font-size: 11px;
-        cursor: pointer;
-        transition: all .15s;
-    }
-
-    .filter-bar .reset-btn:hover {
-        border-color: var(--accent);
-        color: var(--text);
-    }
-
-    .func-count {
-        margin-left: auto;
-        font-size: 12px;
-        color: var(--text-dim);
-    }
-
-    /* ── function table ──────────────────────────────── */
-    .func-table-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 4px 0;
-        overflow: hidden;
-    }
-
-    table.func-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-    }
-
-    table.func-table th {
-        text-align: left;
-        padding: 10px 14px;
-        color: var(--text-dim);
-        font-size: 10px;
         font-weight: 700;
-        letter-spacing: .5px;
+        background: rgba(255,255,255,0.05);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid transparent;
+    }
+
+    .pill-green { background: var(--pill-green); color: var(--pill-green-text); border-color: rgba(16,185,129,0.3); }
+    .pill-yellow { background: var(--pill-yellow); color: var(--pill-yellow-text); border-color: rgba(245,158,11,0.3); }
+    .pill-red { background: var(--pill-red); color: var(--pill-red-text); border-color: rgba(239,68,68,0.3); }
+
+    .tag-container { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .tag {
+        font-size: 10px;
         text-transform: uppercase;
-        border-bottom: 1px solid var(--border);
-        cursor: pointer;
-        user-select: none;
-        transition: color .15s;
-        position: sticky;
-        top: 0;
-        background: var(--surface);
-        z-index: 2;
-    }
-
-    table.func-table th:hover {
-        color: var(--accent);
-    }
-
-    table.func-table th .sort-arrow {
-        margin-left: 4px;
-        font-size: 9px;
-    }
-
-    table.func-table td {
-        padding: 9px 14px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: middle;
-    }
-
-    table.func-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    table.func-table tr {
-        cursor: pointer;
-        transition: background .1s;
-    }
-
-    table.func-table tr:hover td {
-        background: var(--surface2);
-    }
-
-    .fn-name {
-        font-family: 'JetBrains Mono', monospace;
-        color: var(--accent);
-        font-size: 11px;
-    }
-
-    .fn-file {
-        color: var(--text-dim);
-        font-size: 10px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 200px;
-    }
-
-    .score-cell {
-        font-weight: 700;
-        font-size: 12px;
+        letter-spacing: 0.5px;
         padding: 2px 8px;
         border-radius: 4px;
-        display: inline-block;
-        min-width: 36px;
-        text-align: center;
+        background: rgba(255,255,255,0.05);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-light);
     }
 
-    .cell-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }
-    .cell-yellow { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-    .cell-red { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-tertiary);
+        background: var(--bg-glass);
+        border: 1px dashed var(--border-light);
+        border-radius: var(--radius-lg);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<section>
-    <div class="section-title">All Indexed Functions</div>
-    <div class="filter-bar">
-        <div class="filter-group">
-            <label>Energy</label>
-            <input type="number" id="f-energy-min" placeholder="min" min="0" max="10" step="1">
-            <span style="color:var(--text-dim)">–</span>
-            <input type="number" id="f-energy-max" placeholder="max" min="0" max="10" step="1">
-        </div>
-        <div class="filter-group">
-            <label>Debt</label>
-            <input type="number" id="f-debt-min" placeholder="min" min="0" max="10" step="1">
-            <span style="color:var(--text-dim)">–</span>
-            <input type="number" id="f-debt-max" placeholder="max" min="0" max="10" step="1">
-        </div>
-        <div class="filter-group">
-            <label>Safety</label>
-            <input type="number" id="f-safety-min" placeholder="min" min="0" max="10" step="1">
-            <span style="color:var(--text-dim)">–</span>
-            <input type="number" id="f-safety-max" placeholder="max" min="0" max="10" step="1">
-        </div>
-        <button class="reset-btn" id="filter-reset">Reset</button>
-        <span class="func-count" id="func-count"></span>
+<div class="page-header">
+    <div>
+        <h1>Function Catalog</h1>
+        <p style="color: var(--text-secondary); margin-top: 8px; font-size: 15px;">Browse and filter all analyzed functions in the codebase.</p>
     </div>
+</div>
 
-    <div class="func-table-card">
-        <table class="func-table" id="func-table">
-            <thead>
-                <tr>
-                    <th data-col="name">Name <span class="sort-arrow"></span></th>
-                    <th data-col="file">File <span class="sort-arrow"></span></th>
-                    <th data-col="energy">Energy <span class="sort-arrow"></span></th>
-                    <th data-col="debt">Debt <span class="sort-arrow"></span></th>
-                    <th data-col="safety">Safety <span class="sort-arrow"></span></th>
-                    <th data-col="cost">Est. Cost ROI <span class="sort-arrow"></span></th>
-                    <th data-col="loc">LOC <span class="sort-arrow"></span></th>
-                </tr>
-            </thead>
-            <tbody id="func-tbody"></tbody>
-        </table>
+<div class="controls-bar">
+    <div class="search-wrapper">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search functions or files...">
     </div>
-</section>
-{% endblock %}
+    
+    <div class="filter-group">
+        <select id="sortSelect" class="select-input">
+            <option value="name">Sort by Name</option>
+            <option value="risk_desc">Risk (High to Low)</option>
+            <option value="debt_desc">Debt (High to Low)</option>
+            <option value="energy_desc">Energy (High to Low)</option>
+        </select>
+        
+        <select id="riskFilter" class="select-input">
+            <option value="all">All Risks</option>
+            <option value="critical">Critical (7-10)</option>
+            <option value="warning">Warning (4-6)</option>
+            <option value="good">Healthy (0-3)</option>
+        </select>
+    </div>
+</div>
 
-{% block extra_scripts %}
+<div class="catalog-grid" id="catalog-grid">
+    <!-- Populated by JS -->
+</div>
+
 <script>
-    const { api: _api, $: _$, openExplainModal: _openModal, loadAllFunctions: _loadFns, initNav: _initNav } = window.LegacyLens;
+    let allFunctions = [];
 
-    let allFuncs = [];
-    let sortCol = 'safety';
-    let sortDir = 'desc';
+    document.addEventListener('DOMContentLoaded', async () => {
+        const { api, $, pillColor } = window.LegacyLens;
+        $('app-root').style.display = 'block';
 
-    function cellClass(v) {
-        if (v === null || v === undefined) return '';
-        if (v >= 8) return 'cell-red';
-        if (v >= 5) return 'cell-yellow';
-        return 'cell-green';
-    }
+        $('searchInput').addEventListener('input', renderGrid);
+        $('sortSelect').addEventListener('change', renderGrid);
+        $('riskFilter').addEventListener('change', renderGrid);
 
-    function getFilters() {
-        return {
-            energyMin: parseFloat(_$('f-energy-min').value) || 0,
-            energyMax: parseFloat(_$('f-energy-max').value) || 10,
-            debtMin: parseFloat(_$('f-debt-min').value) || 0,
-            debtMax: parseFloat(_$('f-debt-max').value) || 10,
-            safetyMin: parseFloat(_$('f-safety-min').value) || 0,
-            safetyMax: parseFloat(_$('f-safety-max').value) || 10,
-        };
-    }
+        try {
+            allFunctions = await window.LegacyLens.loadAllFunctions();
+            renderGrid();
+        } catch (err) {
+            document.getElementById('catalog-grid').innerHTML = `
+                <div class="empty-state">
+                    <p style="color: var(--danger)">${err.message}</p>
+                </div>`;
+        } finally {
+            $('loading').style.display = 'none';
+        }
+    });
 
-    function renderTable() {
-        const filters = getFilters();
-        let filtered = allFuncs.filter(f => {
-            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0;
-            f.cost = (d * 500) + (e * 200);
-            return e >= filters.energyMin && e <= filters.energyMax
-                && d >= filters.debtMin && d <= filters.debtMax
-                && s >= filters.safetyMin && s <= filters.safetyMax;
+    function renderGrid() {
+        const { pillColor } = window.LegacyLens;
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const sort = document.getElementById('sortSelect').value;
+        const riskF = document.getElementById('riskFilter').value;
+        const grid = document.getElementById('catalog-grid');
+
+        let filtered = allFunctions.filter(f => {
+            if (q && !f.name.toLowerCase().includes(q) && !(f.file||'').toLowerCase().includes(q)) return false;
+            const s = f.safety || 0;
+            if (riskF === 'critical' && s < 7) return false;
+            if (riskF === 'warning' && (s < 4 || s > 6)) return false;
+            if (riskF === 'good' && s > 3) return false;
+            return true;
         });
 
-        // Sort
-        filtered.sort((a, b) => {
-            let va, vb;
-            if (sortCol === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
-            else if (sortCol === 'file') { va = (a.file || '').toLowerCase(); vb = (b.file || '').toLowerCase(); }
-            else if (sortCol === 'loc') { va = (a.line_end || 0) - (a.line_start || 0); vb = (b.line_end || 0) - (b.line_start || 0); }
-            else { va = a[sortCol] ?? 0; vb = b[sortCol] ?? 0; }
-            if (va < vb) return sortDir === 'asc' ? -1 : 1;
-            if (va > vb) return sortDir === 'asc' ? 1 : -1;
+        filtered.sort((a,b) => {
+            if (sort === 'name') return a.name.localeCompare(b.name);
+            if (sort === 'risk_desc') return (b.safety||0) - (a.safety||0);
+            if (sort === 'debt_desc') return (b.debt||0) - (a.debt||0);
+            if (sort === 'energy_desc') return (b.energy||0) - (a.energy||0);
             return 0;
         });
 
-        _$('func-count').textContent = `${filtered.length} of ${allFuncs.length} functions`;
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px; opacity:0.5;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <h3>No functions found</h3>
+                    <p style="margin-top:8px;">Try adjusting your search or filters.</p>
+                </div>`;
+            return;
+        }
 
-        // Update sort arrows
-        document.querySelectorAll('#func-table th').forEach(th => {
-            const arrow = th.querySelector('.sort-arrow');
-            if (th.dataset.col === sortCol) {
-                arrow.textContent = sortDir === 'asc' ? '▲' : '▼';
-            } else {
-                arrow.textContent = '';
-            }
-        });
-
-        const tbody = _$('func-tbody');
-        tbody.innerHTML = filtered.map(f => {
-            const fname = (f.name || '').split('.').pop();
-            const ffile = (f.file || '').split('/').slice(-2).join('/');
-            const loc = (f.line_end || 0) - (f.line_start || 0);
-            const e = f.energy ?? 0, d = f.debt ?? 0, s = f.safety ?? 0, c = f.cost ?? 0;
-            return `<tr data-func="${f.name}">
-                <td><span class="fn-name">${fname}</span></td>
-                <td><span class="fn-file" title="${f.file}">…/${ffile}</span></td>
-                <td><span class="score-cell ${cellClass(e)}">${e}</span></td>
-                <td><span class="score-cell ${cellClass(d)}">${d}</span></td>
-                <td><span class="score-cell ${cellClass(s)}">${s}</span></td>
-                <td><span style="color:var(--text); font-weight:600;">$${c.toLocaleString()}</span></td>
-                <td style="color:var(--text-dim)">${loc}</td>
-            </tr>`;
+        grid.innerHTML = filtered.map(f => {
+            const shortFile = (f.file||'').split('/').slice(-2).join('/');
+            const e = f.energy||0, d = f.debt||0, s = f.safety||0;
+            const fname = f.name || '';
+            const shortName = fname.split('.').pop();
+            const pc_e = pillColor(e), pc_d = pillColor(d), pc_s = pillColor(s);
+            const tagRisk = s >= 7 ? '<span class="tag" style="color:#f87171;border-color:rgba(239,68,68,0.3)">High Risk</span>' : '';
+            const tagDebt = d >= 7 ? '<span class="tag" style="color:#fbbf24;border-color:rgba(245,158,11,0.3)">High Debt</span>' : '';
+            const tagHealthy = (s <= 3 && d <= 3) ? '<span class="tag" style="color:#34d399;border-color:rgba(16,185,129,0.3)">Healthy</span>' : '';
+            return `
+                <div class="func-card" onclick="window.LegacyLens.openExplainModal('${fname}')">
+                    <div class="func-header">
+                        <div>
+                            <div class="func-name" title="${fname}">${shortName}</div>
+                            <div class="func-file" title="${f.file}">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                ${shortFile}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tag-container">${tagRisk}${tagDebt}${tagHealthy}</div>
+                    <div class="metric-pills">
+                        <div class="metric-pill ${pc_e}" title="Cognitive Energy">E: ${e.toFixed(1)}</div>
+                        <div class="metric-pill ${pc_d}" title="Tech Debt">D: ${d.toFixed(1)}</div>
+                        <div class="metric-pill ${pc_s}" title="Safety Risk">S: ${s.toFixed(1)}</div>
+                    </div>
+                </div>
+            `;
         }).join('');
     }
 
-    // Sort on header click
-    document.querySelectorAll('#func-table th').forEach(th => {
-        th.addEventListener('click', () => {
-            const col = th.dataset.col;
-            if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-            else { sortCol = col; sortDir = 'desc'; }
-            renderTable();
-        });
-    });
-
-    // Filter inputs
-    document.querySelectorAll('.filter-bar input[type="number"]').forEach(inp => {
-        inp.addEventListener('input', renderTable);
-    });
-
-    _$('filter-reset').addEventListener('click', () => {
-        document.querySelectorAll('.filter-bar input[type="number"]').forEach(inp => inp.value = '');
-        renderTable();
-    });
-
-    // Row click → modal
-    _$('func-tbody').addEventListener('click', e => {
-        const row = e.target.closest('tr[data-func]');
-        if (row) _openModal(row.dataset.func);
-    });
-
-    // Init
-    async function init() {
-        try {
-            await _loadFns();
-            allFuncs = await _api('/api/functions');
-            renderTable();
-            _$('loading').style.display = 'none';
-            _$('app-root').style.display = 'flex';
-            _$('app-root').style.flexDirection = 'column';
-            await _initNav();
-        } catch (err) {
-            _$('loading').style.display = 'none';
-            _$('app-root').style.display = 'flex';
-            _$('app-root').style.flexDirection = 'column';
-            const banner = _$('error-banner');
-            banner.style.display = 'block';
-            banner.textContent = '⚠ ' + err.message;
-        }
-    }
-
-    init();
 </script>
 {% endblock %}
