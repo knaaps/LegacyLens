@@ -39,13 +39,25 @@ package-lock.json
 *.swo
 *~
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Trashes
 Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
 
-# ── Project-specific ─────────────────────────────────────────
+# ── Project-specific & Data ──────────────────────────────────
 apikey.env
 *.env
+*.env.*
+*.log
+*.sqlite
 *.sqlite3
+*.db
 legacylens_db/
+.coverage
+htmlcov/
 
 # ── Sample data (large cloned repos) ─────────────────────────
 data/

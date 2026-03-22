@@ -44,7 +44,7 @@
 
     #heatmap-svg {
         max-width: 100%;
-        height: auto;
+        display: block;
     }
 
     .node:hover rect {
@@ -126,8 +126,8 @@
 
 <div class="heatmap-container" id="chart-container">
     <div class="chart-controls">
-        <button class="chart-btn active" onclick="updateColorScale('safety')">Color by Risk</button>
-        <button class="chart-btn" onclick="updateColorScale('debt')">Color by Debt</button>
+        <button class="chart-btn active" onclick="updateColorScale(event, 'safety')">Color by Risk</button>
+        <button class="chart-btn" onclick="updateColorScale(event, 'debt')">Color by Debt</button>
     </div>
     
     <div id="tooltip" class="tooltip"></div>
@@ -177,10 +177,14 @@
         }
     });
 
-    function updateColorScale(mode) {
+    function updateColorScale(event, mode) {
         currentColorMode = mode;
         document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
+        if (event && event.currentTarget) {
+             event.currentTarget.classList.add('active');
+        } else if (event && event.target) {
+             event.target.classList.add('active');
+        }
         drawTreemap();
     }
 
@@ -205,7 +209,7 @@
         const tooltip = d3.select("#tooltip");
 
         const root = d3.hierarchy(heatmapData)
-            .sum(d => d.energy || 1)
+            .sum(d => d.children ? 0 : (parseFloat(d.energy) || 1))
             .sort((a, b) => b.value - a.value);
 
         d3.treemap()
@@ -239,9 +243,9 @@
                 tooltip.transition().duration(200).style("opacity", 1);
                 tooltip.html(`
                     <div class="tt-title">${d.data.name}</div>
-                    <div class="tt-prop">Energy: <span class="tt-val">${(d.data.energy||0).toFixed(1)}</span></div>
-                    <div class="tt-prop">Safety: <span class="tt-val">${(d.data.safety||0).toFixed(1)}</span></div>
-                    <div class="tt-prop">Debt: <span class="tt-val">${(d.data.debt||0).toFixed(1)}</span></div>
+                    <div class="tt-prop">Energy: <span class="tt-val">${parseFloat(d.data.energy||0).toFixed(1)}</span></div>
+                    <div class="tt-prop">Safety: <span class="tt-val">${parseFloat(d.data.safety||0).toFixed(1)}</span></div>
+                    <div class="tt-prop">Debt: <span class="tt-val">${parseFloat(d.data.debt||0).toFixed(1)}</span></div>
                     <div style="margin-top:8px; font-size:11px; color:var(--accent-primary)">Click to see full details</div>
                 `)
                 .style("left", (event.pageX + 15) + "px")
@@ -293,8 +297,6 @@
             clearTimeout(window._resizeTimer);
             window._resizeTimer = setTimeout(drawTreemap, 250);
         }
-    });
-
     });
 </script>
 {% endblock %}
