@@ -1,5 +1,6 @@
 """Code embeddings using CodeBERT and ChromaDB for vector storage."""
 
+import hashlib
 from pathlib import Path
 from typing import Optional
 
@@ -160,6 +161,57 @@ class CodeEmbedder:
             stored += len(batch)
             print(f"Stored {stored}/{len(functions)} functions...")
 
+        return stored
+
+    # ── Fingerprint-aware batch store ─────────────────────────────────────────
+
+    def _fingerprint(self, functions: list["FunctionMetadata"]) -> str:
+        """Compute a SHA-256 digest of all function code strings."""
+        h = hashlib.sha256()
+        for fn in functions:
+            h.update(fn.code.encode("utf-8", errors="replace"))
+        return h.hexdigest()
+
+    def _fingerprint_path(self) -> Path:
+        return self._db_path / ".index_fingerprint"
+
+    def store_batch_if_changed(
+        self,
+        functions: list["FunctionMetadata"],
+        batch_size: int = 32,
+    ) -> int:
+        """
+        Store embeddings only when the source has changed since the last run.
+
+        Computes a SHA-256 fingerprint of all function code strings and compares
+        it against the fingerprint persisted next to the ChromaDB directory.
+        If they match, the existing index is reused and re-embedding is skipped.
+        If they differ (or no prior fingerprint exists), a full clear + re-index
+        is performed and the new fingerprint is saved for next time.
+
+        Args:
+            functions: List of function metadata (same as store_batch)
+            batch_size: Passed through to store_batch on a cache miss
+
+        Returns:
+            Number of functions in the index (cached or freshly stored)
+        """
+        self._ensure_db_connected()
+
+        new_fp = self._fingerprint(functions)
+        fp_path = self._fingerprint_path()
+
+        if fp_path.exists() and fp_path.read_text().strip() == new_fp:
+            # Source unchanged — reuse existing index
+            cached_count = self._collection.count()
+            print(f"Cache hit — skipping re-index ({cached_count} functions already indexed)")
+            return cached_count
+
+        # Source changed or first run — clear and rebuild
+        print("Fingerprint changed — performing full re-index...")
+        self.clear()
+        stored = self.store_batch(functions, batch_size=batch_size)
+        fp_path.write_text(new_fp)
         return stored
 
     def search(

@@ -173,13 +173,21 @@ def step_2_search(functions: List[FunctionMetadata]) -> CodeEmbedder:
     _step(2, "Semantic Search  (CodeBERT + ChromaDB)")
 
     embedder = CodeEmbedder()
-    with _quiet():
-        embedder.clear()
 
-    with console.status("[bold green]Loading CodeBERT & generating vector embeddings..."):
+    # Use fingerprint-aware indexing: skips full CodeBERT re-embed when source
+    # files haven't changed since the last run (SHA-256 digest comparison).
+    # Core search / retrieval logic is identical either way.
+    with console.status("[bold green]Checking embedding index (CodeBERT + ChromaDB)..."):
         with _quiet():
-            embedder.store_batch(functions)
-    console.print(f"  Indexed [bold cyan]{len(functions)}[/bold cyan] embeddings\n")
+            indexed = embedder.store_batch_if_changed(functions)
+        cache_status = (
+            "[dim](cache hit — skipped re-index)[/dim]"
+            if indexed == len(functions) and (embedder._fingerprint_path()).exists()
+            else "[dim](full re-index)[/dim]"
+        )
+    console.print(
+        f"  Indexed [bold cyan]{indexed}[/bold cyan] embeddings  {cache_status}\n"
+    )
 
     # Run multiple queries to show versatility
     for q in QUERIES:
