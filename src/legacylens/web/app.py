@@ -10,6 +10,8 @@ from flask import Flask, abort, jsonify, render_template, request
 
 def create_app():
     app = Flask(__name__)
+    app.config["TEMPLATES_AUTO_RELOAD"] = True  # pick up template edits without restart
+
 
     data_file = Path.home() / ".legacylens" / "function_data.json"
     repo_root_file = Path.home() / ".legacylens" / "repo_root.txt"
@@ -92,6 +94,66 @@ def create_app():
     @app.route("/search")
     def search_view():
         return render_template("search.html")
+
+    @app.route("/api/search")
+    def api_search():
+        """Keyword search over indexed function data.
+
+        Query params:
+          ?q=<search query>
+          ?k=<number of results, default 10>
+        Returns ranked results with name, file, score, and explanation snippet.
+        """
+        q = request.args.get("q", "").strip().lower()
+        try:
+            k = min(int(request.args.get("k", 10)), 50)
+        except ValueError:
+            k = 10
+
+        if not q:
+            return jsonify({"results": [], "query": q, "total": 0})
+
+        fns = _load_functions()
+        if not fns:
+            return jsonify({"error": "No data. Run the faculty demo first to index functions."}), 404
+
+        scored = []
+        terms = q.split()
+
+        for fn in fns:
+            name = (fn.get("name") or "").lower()
+            file = (fn.get("file") or "").lower()
+            explanation = (fn.get("explanation") or fn.get("verified_explanation") or "").lower()
+
+            score = 0.0
+            for term in terms:
+                if term in name:
+                    score += 1.0          # strongest signal: name match
+                if term in file:
+                    score += 0.4          # file path match
+                if term in explanation:
+                    score += 0.3          # explanation match
+
+            if score > 0:
+                scored.append((score / len(terms), fn))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = scored[:k]
+
+        results = [
+            {
+                "name": fn.get("name", ""),
+                "file": fn.get("file", ""),
+                "score": round(min(score, 1.0), 3),
+                "explanation": fn.get("explanation") or fn.get("verified_explanation") or "",
+                "energy": fn.get("energy"),
+                "debt": fn.get("debt"),
+                "safety": fn.get("safety"),
+            }
+            for score, fn in top
+        ]
+
+        return jsonify({"results": results, "query": q, "total": len(scored)})
 
     @app.route("/heatmap")
     def heatmap_view():

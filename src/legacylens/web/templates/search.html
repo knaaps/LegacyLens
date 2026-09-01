@@ -155,12 +155,16 @@
     </p>
     
     <div class="search-input-container">
-        <input type="text" id="queryInput" class="main-search-input" placeholder="e.g. 'How is user authentication handled?'" onkeydown="if(event.key === 'Enter') doSearch()">
-        <input type="number" id="kInput" class="k-input" value="5" min="1" max="20" title="Number of results">
+        <input type="text" id="queryInput" class="main-search-input" placeholder="e.g. 'find owner by last name', 'processCreationForm'" onkeydown="if(event.key === 'Enter') doSearch()">
         <button onclick="doSearch()" class="main-search-btn" id="searchBtn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             Search
         </button>
+    </div>
+    <div style="margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text-tertiary); font-size: 13px;">
+        <label for="kInput">Results to show:</label>
+        <input type="number" id="kInput" value="5" min="1" max="50" title="Number of results to return"
+               style="width: 56px; background: rgba(255,255,255,0.06); border: 1px solid var(--border-light); border-radius: 6px; color: var(--text-secondary); padding: 4px 8px; text-align: center; font-family: 'JetBrains Mono', monospace; outline: none;">
     </div>
 </div>
 
@@ -175,8 +179,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        window.LegacyLens.$('app-root').style.display = 'block';
-        window.LegacyLens.$('loading').style.display = 'none';
         document.getElementById('queryInput').focus();
     });
 
@@ -196,43 +198,43 @@
         searchBtn.style.opacity = '0.5';
 
         try {
-            const data = await window.LegacyLens.api(\`/api/search?q=\${encodeURIComponent(q)}&k=\${k}\`);
+            const data = await window.LegacyLens.api(`/api/search?q=${encodeURIComponent(q)}&k=${k}`);
             
             if (!data.results || data.results.length === 0) {
-                resultsDiv.innerHTML = \`
+                resultsDiv.innerHTML = `
                     <div style="text-align:center; padding: 40px; color:var(--text-tertiary); background:var(--bg-glass); border-radius:var(--radius-lg); border:1px dashed var(--border-light);">
                         No semantic matches found.
                     </div>
-                \`;
+                `;
                 return;
             }
 
-            resultsDiv.innerHTML = data.results.map((r, i) => \`
-                <div class="result-card" onclick="window.LegacyLens.openExplainModal('\${r.name}')" style="animation: slideIn \${0.2 + (i*0.05)}s ease forwards; opacity: 0; transform: translateY(10px);">
+            resultsDiv.innerHTML = data.results.map((r, i) => `
+                <div class="result-card" onclick="window.LegacyLens.openExplainModal('${r.name}')" style="animation: slideIn ${0.2 + (i*0.05)}s ease forwards; opacity: 0; transform: translateY(10px);">
                     <div class="rc-header">
                         <div>
-                            <div class="rc-name">\${r.name}</div>
+                            <div class="rc-name">${r.name}</div>
                             <div class="rc-file">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                                \${r.file || 'Unknown file'}
+                                ${r.file || 'Unknown file'}
                             </div>
                         </div>
                         <div class="rc-score" title="Cosine Similarity Score">
-                            \${(r.score * 100).toFixed(1)}% Match
+                            ${(r.score * 100).toFixed(1)}% Match
                         </div>
                     </div>
                     <div class="rc-explanation">
-                        \${r.explanation.substring(0, 200)}...
+                        ${(r.explanation || 'No explanation cached yet.').substring(0, 200)}${(r.explanation||'').length > 200 ? '...' : ''}
                     </div>
                 </div>
-            \`).join('');
+            `).join('');
 
         } catch (err) {
-            resultsDiv.innerHTML = \`
+            resultsDiv.innerHTML = `
                 <div style="padding: 20px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; border-radius: var(--radius-md);">
-                    <strong>Search Error:</strong> \${err.message}
+                    <strong>Search Error:</strong> ${err.message}
                 </div>
-            \`;
+            `;
         } finally {
             loadingDiv.style.display = 'none';
             searchBtn.disabled = false;
