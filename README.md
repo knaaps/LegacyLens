@@ -6,8 +6,26 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Status](https://img.shields.io/badge/status-web_preview-blue.svg)
+![LangChain](https://img.shields.io/badge/LangChain-WIP-yellow.svg)
+![LangGraph](https://img.shields.io/badge/LangGraph-planned-lightgrey.svg)
+![AWS](https://img.shields.io/badge/AWS-Cloud%20Practitioner%20(in%20progress)-orange.svg)
 
 **LegacyLens** is a research-backed developer tool designed to demystify complex, undocumented legacy codebases. Unlike standard AI coding assistants that rely on potential "hallucinations" or purely semantic retrieval, LegacyLens employs a **Smart Hybrid Pipeline**: combining deterministic static analysis (Call Graphs, ASTs) with a **Multi-Agent Verification Loop**: to produce accurate, structurally sound explanations.
+
+## Stack & Roadmap
+
+**Current:** Python 3.10+, Flask, React, Tree-sitter, ChromaDB, Groq/Ollama, Docker  
+**In Progress:** AWS Cloud Practitioner training; LangChain agent orchestration scaffold  
+**Planned:** LangGraph state-machine workflow; AWS (ECS/SageMaker) deployment path
+
+| Milestone | Status | Target |
+|:---|:---|:---|
+| Core multi-agent loop (Writer-Critic-Finalizer) | ✅ Stable | — |
+| Web dashboard (v0.2.0) | ✅ Live | — |
+| Persistent explanation cache | ✅ Live | — |
+| **LangChain/LangGraph integration** | 🚧 Scaffold | Sept 2026 |
+| **AWS deployment & cloud-native scaling** | 📋 Planned | Sept–Oct 2026 |
+| Additional language parsers (Go, Rust) | 📋 Backlog | 2027 |
 
 ---
 
@@ -33,6 +51,7 @@ LegacyLens orchestrates a **Writer-Critic-Finalizer Loop** with **Compositional 
 LegacyLens introduces modern agentic capabilities for extensibility and observability:
 - **YAML SOP Loader (`--sop`):** Agent behaviors (Writer, Critic, Finalizer) can now be dynamically configured using external `sops.yaml` files. This allows temperature tuning and prompt overriding without modifying Python engine code.
 - **Regeneration State Logging:** Deep visibility into the verification loop via JSON traces (`regen_trace.json`), allowing frontend components to visualize the Agent's "Revision Timeline" step-by-step.
+- **LangChain/LangGraph Exploration (WIP):** Prototyping `langchain.chains` and `langgraph` state-machine wrappers around the custom agent engine. Goal is a drop-in alternative for rapid pipeline iteration without sacrificing the deterministic static-analysis backend.
 
 ###  Evaluation & Visualization
 LegacyLens includes robust tools for analysis and measurement:
@@ -91,9 +110,6 @@ The pipeline moves beyond simple RAG by enforcing structural rigor and multi-sta
 │ Verified Output   │ ◄──  │ Phase 4: CodeBalance  │
 │                   │      │ (3D Health Metrics)   │
 └───────────────────┘      └───────────────────────┘
-```
-
----
 
 ##  Quick Start
 
