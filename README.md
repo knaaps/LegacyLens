@@ -8,7 +8,6 @@
 ![Status](https://img.shields.io/badge/status-web_preview-blue.svg)
 ![LangChain](https://img.shields.io/badge/LangChain-WIP-yellow.svg)
 ![LangGraph](https://img.shields.io/badge/LangGraph-planned-lightgrey.svg)
-![AWS](https://img.shields.io/badge/AWS-Cloud%20Practitioner%20(in%20progress)-orange.svg)
 
 **LegacyLens** is a research-backed developer tool designed to demystify complex, undocumented legacy codebases. Unlike standard AI coding assistants that rely on potential "hallucinations" or purely semantic retrieval, LegacyLens employs a **Smart Hybrid Pipeline**: combining deterministic static analysis (Call Graphs, ASTs) with a **Multi-Agent Verification Loop**: to produce accurate, structurally sound explanations.
 
@@ -110,7 +109,7 @@ The pipeline moves beyond simple RAG by enforcing structural rigor and multi-sta
 │ Verified Output   │ ◄──  │ Phase 4: CodeBalance  │
 │                   │      │ (3D Health Metrics)   │
 └───────────────────┘      └───────────────────────┘
-
+```
 ##  Quick Start
 
 ### Prerequisites
