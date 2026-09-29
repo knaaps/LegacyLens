@@ -22,8 +22,8 @@
 | Core multi-agent loop (Writer-Critic-Finalizer) | ✅ Stable | — |
 | Web dashboard (v0.2.0) | ✅ Live | — |
 | Persistent explanation cache | ✅ Live | — |
-| **LangChain/LangGraph integration** | Ongoing | Sept 2026 |
-| **AWS deployment & cloud-native scaling** | Planned | Sept–Oct 2026 |
+| **LangChain/LangGraph integration** | Ongoing | October 2026 |
+| **AWS deployment & cloud-native scaling** | Planned | Oct-Nov 2026 |
 | Additional language parsers (Go, Rust) | Backlog | 2027 |
 
 ---
